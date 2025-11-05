@@ -481,7 +481,10 @@
     <div class="header">
         <div class="header-content">
             <h1>🚀 AutoCeya - 测压控制台</h1>
-            <button class="logout-btn" onclick="logout()">退出登录</button>
+            <div style="display: flex; gap: 15px;">
+                <button class="logout-btn" onclick="viewHistory()">📊 历史记录</button>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
         </div>
     </div>
 
@@ -1394,6 +1397,11 @@
         // 通知提示
         function showNotification(message, type = 'info') {
             console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // 查看历史记录
+        function viewHistory() {
+            window.location.href = '/history';
         }
 
         // 退出登录

@@ -19,6 +19,7 @@ services:
       - DEFAULT_RESPONSE_TIME_THRESHOLD=150000
     restart: unless-stopped
     volumes:
-      # 如果需要持久化日志，可以挂载卷
+      # 持久化数据库文件和日志
+      - ./data:/app/data
       - ./logs:/app/logs
 

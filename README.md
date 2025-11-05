@@ -33,6 +33,13 @@
   - 📉 **实时更新**: 每分钟自动记录并更新统计曲线
   - 🔍 **详细请求日志**: 每个请求的完整记录，支持状态筛选
   
+- 📚 **历史记录管理**（新功能！）
+  - 💾 **自动保存**: 每次测试结束后自动保存完整记录
+  - 📊 **详细统计**: 记录所有测试数据和曲线图
+  - 🔍 **历史查看**: 浏览所有历史测试记录
+  - 📈 **趋势分析**: 查看每条记录的详细数据和图表
+  - 🗄️ **SQLite存储**: 使用SQLite本地数据库持久化存储
+
 - 🔒 **安全认证**
   - 密钥登录保护
   - Token认证机制
@@ -65,6 +72,18 @@
 
 #### 使用Docker Hub镜像（最快捷）
 
+**方法1：使用docker run命令（最简单）**
+
+```bash
+docker run -d \
+  -p 8998:8998 \
+  -e AUTH_SECRET=your_password \
+  --name autoceya \
+  bohesocool/autoceya:latest
+```
+
+**方法2：使用docker-compose（推荐）**
+
 ```bash
 # 1. 创建docker-compose.yml文件
 cat > docker-compose.yml << 'EOF'
@@ -94,7 +113,7 @@ docker-compose down
 
 1. **克隆项目**
 ```bash
-git clone <your-repo>
+git clone https://github.com/bohesocool/autoCeya.git
 cd autoCeya
 ```
 
@@ -257,6 +276,16 @@ npm run dev
 - 或等待自动测压达到极限自动停止
 - 或等待固定模式设定的测试时长结束自动停止
 
+### 7. 查看历史记录
+
+点击"📊 历史记录"按钮进入历史记录页面：
+- ✅ 查看所有历史测试记录列表
+- ✅ 显示每条记录的关键信息（时间、URL、模型、RPM、成功率等）
+- ✅ 点击任意记录查看详细信息
+- ✅ 查看完整的测试数据和趋势曲线图
+- ✅ 删除单条记录或清空所有记录
+- ✅ 支持分页浏览
+
 ## 📊 配置说明
 
 ### 服务器配置 (`.env`)
@@ -288,6 +317,7 @@ autoMode: {
 - **WebSocket (ws)**: 实时通信
 - **Axios**: HTTP客户端
 - **dotenv**: 环境变量管理
+- **better-sqlite3**: SQLite数据库（历史记录存储）
 
 ### 前端技术栈
 - **原生HTML5/CSS3**: 界面构建
@@ -300,13 +330,17 @@ autoMode: {
 autoCeya/
 ├── server.js              # 主服务器文件
 ├── config.js              # 配置文件
+├── database.js            # 数据库管理模块
 ├── package.json           # 依赖管理
 ├── .env.example          # 环境变量模板
 ├── .gitignore            # Git忽略文件
 ├── README.md             # 项目文档
+├── data/                 # SQLite数据库目录（自动创建）
 └── public/               # 前端静态文件
     ├── login.html        # 登录页面
-    └── dashboard.html    # 控制面板
+    ├── dashboard.html    # 控制面板
+    ├── history.html      # 历史记录列表
+    └── detail.html       # 历史记录详情
 ```
 
 ## 🔄 版本更新
@@ -378,12 +412,52 @@ Response: {
 }
 ```
 
+### GET /api/history
+获取历史记录列表
+```json
+Query: ?page=1&pageSize=20
+Response: {
+  "list": [...],
+  "total": 100,
+  "page": 1,
+  "pageSize": 20,
+  "totalPages": 5
+}
+```
+
+### GET /api/history/:id
+获取单条历史记录详情
+```json
+Response: {
+  "id": 1,
+  "start_time": "...",
+  "end_time": "...",
+  "minuteStats": [...],
+  "errorSummary": {...},
+  ...
+}
+```
+
+### DELETE /api/history/:id
+删除历史记录
+```json
+Response: { "success": true, "message": "删除成功" }
+```
+
+### POST /api/history/clear
+清空所有历史记录
+```json
+Response: { "success": true, "message": "所有历史记录已清空" }
+```
+
 ## 🎨 界面预览
 
 - **登录页面**: 简洁优雅的渐变背景登录界面
 - **控制台**: 实时数据展示，支持深色/浅色主题
 - **数据面板**: 卡片式布局，关键指标一目了然
 - **错误监控**: 详细的错误分类和日志记录
+- **历史记录**: 精美的列表和详情展示，完整的数据可视化
+- **趋势图表**: 交互式Chart.js图表，完整展示测试过程
 
 ## 🤝 贡献指南
 

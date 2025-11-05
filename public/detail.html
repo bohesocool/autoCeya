@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoCeya - 测试详情</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 30px;
+        }
+
+        .info-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .info-value.highlight {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .success { color: #27ae60; }
+        .danger { color: #e74c3c; }
+        .warning { color: #f39c12; }
+        .primary { color: #667eea; }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .error-summary {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .error-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .error-message {
+            flex: 1;
+            margin-right: 15px;
+            word-break: break-word;
+        }
+
+        .error-count {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading::before {
+            content: "⏳";
+            display: inline-block;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        .mode-badge {
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .mode-auto {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .mode-fixed {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .chart-wrapper {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>📋 测试详情</h1>
+            <button class="btn-secondary" onclick="goBack()">返回列表</button>
+        </div>
+    </div>
+
+    <div class="container" id="content">
+        <div class="loading">加载中...</div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let statsChart;
+
+        // 验证登录
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        // 获取URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const historyId = urlParams.get('id');
+
+        if (!historyId) {
+            document.getElementById('content').innerHTML = `
+                <div class="empty-state">
+                    <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                    <div>无效的记录ID</div>
+                </div>
+            `;
+        } else {
+            loadDetail();
+        }
+
+        // 加载详情
+        async function loadDetail() {
+            try {
+                const response = await fetch(`/api/history/${historyId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载失败');
+                }
+
+                const data = await response.json();
+                renderDetail(data);
+            } catch (error) {
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                        <div>加载失败: ${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染详情
+        function renderDetail(data) {
+            const startTime = new Date(data.start_time);
+            const endTime = new Date(data.end_time);
+            const duration = formatDuration(data.duration);
+            const modeClass = data.test_mode === 'auto' ? 'mode-auto' : 'mode-fixed';
+            const modeText = data.test_mode === 'auto' ? '自动测压' : '固定测压';
+            const promptModeText = data.prompt_mode === 'random' ? '随机语句' : '固定语句';
+            const requestTypeText = data.request_type === 'stream' ? '流式请求' : '非流式请求';
+            const minuteStats = typeof data.minuteStats === 'string' ? JSON.parse(data.minuteStats) : data.minuteStats;
+            const errorSummary = typeof data.errorSummary === 'string' ? JSON.parse(data.errorSummary) : data.errorSummary;
+
+            const html = `
+                <!-- 基本信息 -->
+                <div class="info-card">
+                    <h2 class="section-title">基本信息 <span class="mode-badge ${modeClass}">${modeText}</span></h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">测试站点</span>
+                            <span class="info-value">${escapeHtml(data.test_url)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">模型名称</span>
+                            <span class="info-value">${escapeHtml(data.model_name)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">测试模式</span>
+                            <span class="info-value">${modeText}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">语句模式</span>
+                            <span class="info-value">${promptModeText}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">请求类型</span>
+                            <span class="info-value">${requestTypeText}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">开始时间</span>
+                            <span class="info-value">${formatDateTime(startTime)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">结束时间</span>
+                            <span class="info-value">${formatDateTime(endTime)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">测试时长</span>
+                            <span class="info-value highlight">${duration}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">${data.test_mode === 'auto' ? '最大RPM' : '目标RPM'}</span>
+                            <span class="info-value highlight">${data.max_rpm || data.target_rpm}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">停止原因</span>
+                            <span class="info-value">${escapeHtml(data.stop_reason || '手动停止')}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 统计数据 -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value primary">${data.total_requests.toLocaleString()}</div>
+                        <div class="stat-label">总请求数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value success">${data.success_rate}%</div>
+                        <div class="stat-label">成功率</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value success">${data.success_count.toLocaleString()}</div>
+                        <div class="stat-label">成功次数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value danger">${data.failure_count.toLocaleString()}</div>
+                        <div class="stat-label">失败次数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value warning">${data.avg_response_time.toLocaleString()}ms</div>
+                        <div class="stat-label">平均响应时间</div>
+                    </div>
+                </div>
+
+                <!-- 成功/失败趋势图 -->
+                <div class="chart-container">
+                    <h2 class="section-title">📈 每分钟成功/失败趋势图</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 错误统计 -->
+                <div class="error-summary">
+                    <h2 class="section-title">错误统计</h2>
+                    <div id="errorSummary"></div>
+                </div>
+            `;
+
+            document.getElementById('content').innerHTML = html;
+
+            // 渲染图表
+            if (minuteStats && minuteStats.length > 0) {
+                renderChart(minuteStats);
+            }
+
+            // 渲染错误统计
+            if (errorSummary && Object.keys(errorSummary).length > 0) {
+                renderErrorSummary(errorSummary);
+            } else {
+                document.getElementById('errorSummary').innerHTML = '<div class="empty-state">无错误记录</div>';
+            }
+        }
+
+        // 渲染图表
+        function renderChart(minuteStats) {
+            try {
+                const canvas = document.getElementById('statsChart');
+                const ctx = canvas.getContext('2d');
+
+                const labels = minuteStats.map(stat => {
+                    const date = new Date(stat.timestamp);
+                    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                });
+
+                const successData = minuteStats.map(stat => stat.successCount);
+                const failureData = minuteStats.map(stat => stat.failureCount);
+
+                statsChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: '成功次数',
+                                data: successData,
+                                borderColor: '#27ae60',
+                                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                borderWidth: 2
+                            },
+                            {
+                                label: '失败次数',
+                                data: failureData,
+                                borderColor: '#e74c3c',
+                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 3,
+                                pointHoverRadius: 6,
+                                borderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 20,
+                                    padding: 15,
+                                    font: {
+                                        size: 14
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 14
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    title: function(context) {
+                                        return '时间: ' + context[0].label;
+                                    },
+                                    afterBody: function(context) {
+                                        const index = context[0].dataIndex;
+                                        const success = context[0].dataset.data[index];
+                                        const failure = context[1].dataset.data[index];
+                                        const total = success + failure;
+                                        const rate = total > 0 ? ((success / total) * 100).toFixed(2) : '100.00';
+                                        return '\n成功率: ' + rate + '%';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true,
+                                    autoSkipPadding: 20,
+                                    maxTicksLimit: 20,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                },
+                                ticks: {
+                                    precision: 0,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error rendering chart:', error);
+            }
+        }
+
+        // 渲染错误统计
+        function renderErrorSummary(errors) {
+            const sortedErrors = Object.entries(errors)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const html = sortedErrors.map(([message, count]) => `
+                <div class="error-item">
+                    <div class="error-message">${escapeHtml(message)}</div>
+                    <div class="error-count">${count}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('errorSummary').innerHTML = html;
+        }
+
+        // 格式化时长
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            const h = hours > 0 ? `${hours}小时` : '';
+            const m = minutes % 60 > 0 ? `${minutes % 60}分` : '';
+            const s = seconds % 60 > 0 ? `${seconds % 60}秒` : '';
+            
+            return (h + m + s) || '0秒';
+        }
+
+        // 格式化日期时间
+        function formatDateTime(date) {
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // 返回列表
+        function goBack() {
+            window.location.href = '/history';
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
+

@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const path = require('path');
 const axios = require('axios');
 const config = require('./config');
+const db = require('./database');
 
 const app = express();
 const server = http.createServer(app);
@@ -738,6 +739,40 @@ function printFinalSummary(reason, maxRPM = null) {
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   `);
+  
+  // 保存历史记录到数据库
+  saveTestHistory(reason, maxRPM);
+}
+
+// 保存测试历史到数据库
+function saveTestHistory(stopReason, maxRPM = null) {
+  try {
+    const historyData = {
+      startTime: new Date(testState.startTime).toISOString(),
+      endTime: new Date().toISOString(),
+      duration: Date.now() - testState.startTime,
+      testUrl: testState.config.url,
+      modelName: testState.config.modelName,
+      testMode: testState.mode,
+      promptMode: testState.config.promptMode,
+      requestType: testState.config.requestType,
+      targetRPM: testState.targetRPM,
+      maxRPM: maxRPM,
+      totalRequests: testState.stats.totalRequests,
+      successCount: testState.stats.successCount,
+      failureCount: testState.stats.failureCount,
+      successRate: parseFloat(testState.stats.successRate),
+      avgResponseTime: testState.stats.avgResponseTime,
+      stopReason: stopReason,
+      minuteStats: testState.stats.minuteStats,
+      errorSummary: testState.stats.errors
+    };
+    
+    const historyId = db.saveHistory(historyData);
+    console.log(`✅ 测试历史已保存到数据库 (ID: ${historyId})`);
+  } catch (error) {
+    console.error('❌ 保存测试历史失败:', error);
+  }
 }
 
 // 提供前端页面
@@ -747,6 +782,65 @@ app.get('/', (req, res) => {
 
 app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/history', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
+
+app.get('/detail', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'detail.html'));
+});
+
+// 获取历史记录列表
+app.get('/api/history', authenticate, (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 20;
+    const result = db.getHistoryList(page, pageSize);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: '获取历史记录失败：' + error.message });
+  }
+});
+
+// 获取单条历史记录详情
+app.get('/api/history/:id', authenticate, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const detail = db.getHistoryDetail(id);
+    if (!detail) {
+      return res.status(404).json({ error: '历史记录不存在' });
+    }
+    res.json(detail);
+  } catch (error) {
+    res.status(500).json({ error: '获取历史详情失败：' + error.message });
+  }
+});
+
+// 删除历史记录
+app.delete('/api/history/:id', authenticate, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const success = db.deleteHistory(id);
+    if (success) {
+      res.json({ success: true, message: '删除成功' });
+    } else {
+      res.status(404).json({ error: '历史记录不存在' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: '删除失败：' + error.message });
+  }
+});
+
+// 清空所有历史记录
+app.post('/api/history/clear', authenticate, (req, res) => {
+  try {
+    db.clearAllHistory();
+    res.json({ success: true, message: '所有历史记录已清空' });
+  } catch (error) {
+    res.status(500).json({ error: '清空失败：' + error.message });
+  }
 });
 
 // 启动服务器
