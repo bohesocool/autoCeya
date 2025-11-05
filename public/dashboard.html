@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoCeya - 测压控制台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 30px;
+        }
+
+        .config-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            color: #555;
+        }
+
+        input, select, textarea {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 300px;
+            line-height: 1.5;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .mode-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .mode-option.active {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+
+        .mode-option:hover {
+            border-color: #667eea;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .success { color: #27ae60; }
+        .danger { color: #e74c3c; }
+        .warning { color: #f39c12; }
+        .primary { color: #667eea; }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .error-logs {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .log-item {
+            padding: 12px;
+            background: #fff5f5;
+            border-left: 4px solid #e74c3c;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .log-time {
+            color: #999;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running {
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        .status-stopped {
+            background: #95a5a6;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .error-summary {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .error-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .error-message {
+            flex: 1;
+            margin-right: 15px;
+            word-break: break-word;
+        }
+
+        .error-count {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .request-logs {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .request-log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .request-log-table th {
+            background: #f8f9fa;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .request-log-table td {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: top;
+        }
+
+        .request-log-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.failure {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .error-detail {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+            word-break: break-word;
+        }
+
+        .clear-logs-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            float: right;
+            margin-bottom: 15px;
+        }
+
+        .clear-logs-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            margin: 0;
+        }
+
+        .status-bar {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .prompt-list {
+            margin-top: 10px;
+        }
+
+        .prompt-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: flex-start;
+        }
+
+        .prompt-item input {
+            flex: 1;
+        }
+
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-remove {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-add:hover, .btn-remove:hover {
+            opacity: 0.8;
+        }
+
+        small {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .control-buttons {
+                flex-direction: column;
+            }
+
+            .chart-wrapper {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>🚀 AutoCeya - 测压控制台</h1>
+            <button class="logout-btn" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-info">
+                <span class="status-indicator status-stopped" id="statusIndicator"></span>
+                <span id="statusText">准备就绪</span>
+            </div>
+            <div id="currentRPM" style="font-size: 20px; font-weight: 700; color: #667eea;">
+                当前 RPM: 0
+            </div>
+        </div>
+
+        <!-- 提示信息 -->
+        <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+            <div style="font-size: 14px; color: #555;">
+                <strong style="color: #667eea;">💡 提示：</strong>
+                <span>测压任务在服务器后台运行，即使关闭浏览器窗口，测试也会继续进行。重新打开页面后可以看到测试进度和实时数据。配置信息已自动保存到浏览器本地。</span>
+            </div>
+        </div>
+
+        <!-- 配置区域 -->
+        <div class="config-section">
+            <h2 class="section-title">测试配置</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>测试站点URL *</label>
+                    <input type="text" id="url" placeholder="https://generativelanguage.googleapis.com">
+                </div>
+                
+                <div class="form-group">
+                    <label>模型名称 *</label>
+                    <input type="text" id="modelName" placeholder="gemini-1.5-flash">
+                </div>
+                
+                <div class="form-group">
+                    <label>API密钥 *</label>
+                    <input type="password" id="apiKey" placeholder="your-api-key">
+                </div>
+            </div>
+
+            <h3 style="margin: 25px 0 15px 0; font-size: 16px; font-weight: 600;">请求类型</h3>
+            <div class="mode-selector" id="requestTypeSelector">
+                <div class="mode-option active" data-type="stream">
+                    <div style="font-size: 18px; margin-bottom: 5px;">🌊 流式请求</div>
+                    <div style="font-size: 13px; color: #666;">streamGenerateContent</div>
+                </div>
+                <div class="mode-option" data-type="non-stream">
+                    <div style="font-size: 18px; margin-bottom: 5px;">⚡ 非流式请求</div>
+                    <div style="font-size: 13px; color: #666;">generateContent</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 25px 0 15px 0; font-size: 16px; font-weight: 600;">测试语句模式</h3>
+            <div class="mode-selector" id="promptModeSelector">
+                <div class="mode-option active" data-mode="fixed">
+                    <div style="font-size: 18px; margin-bottom: 5px;">📝 固定语句</div>
+                    <div style="font-size: 13px; color: #666;">使用相同的测试语句</div>
+                </div>
+                <div class="mode-option" data-mode="random">
+                    <div style="font-size: 18px; margin-bottom: 5px;">🎲 随机语句</div>
+                    <div style="font-size: 13px; color: #666;">随机变化避免风控</div>
+                </div>
+            </div>
+
+            <div class="form-group" id="fixedPromptGroup">
+                <label>测试语句 * (支持大文本，最多200K)</label>
+                <textarea id="testPrompt" placeholder="输入测试语句...&#10;&#10;支持长文本输入，最多200,000字符&#10;可用于测试大型输入的处理能力"></textarea>
+                <small>当前字符数: <span id="charCount">0</span> / 200,000</small>
+            </div>
+
+            <div class="form-group" id="randomPromptGroup" style="display: none;">
+                <label>随机测试语句库</label>
+                <small>已预设10条测试语句，你可以修改或添加更多。系统会随机选择并在其基础上进行变化</small>
+                <div class="prompt-list" id="promptList">
+                    <div class="prompt-item">
+                        <input type="text" value="请详细分析人工智能在医疗健康领域的应用前景和潜在挑战，包括诊断辅助和个性化治疗等方面" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="能否深入探讨量子计算技术的基本原理，以及它相比经典计算机在密码学和药物研发中的优势" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="请分析区块链技术在供应链管理、金融科技和数字身份认证中的实际应用案例和发展趋势" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="深度学习在自然语言处理领域取得了哪些突破性进展，请结合GPT和BERT等模型进行说明" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="请解释5G和6G移动通信技术的核心差异，以及对物联网和智慧城市建设的影响" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="机器学习模型在实际部署中面临哪些伦理和隐私保护问题，应该如何制定相应的监管政策" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="请分析云原生技术架构的演进历程，包括容器化、微服务和Serverless等关键技术的特点" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="能否介绍边缘计算与传统云计算的区别，以及在工业互联网和自动驾驶中的应用场景" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="请探讨计算机视觉技术在安防监控、自动驾驶和医疗影像分析中的最新研究成果和实践经验" class="random-prompt">
+                        <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+                    </div>
+                    <div class="prompt-item">
+                        <input type="text" value="人工智能大模型的训练需要消耗大量计算资源，请分析其能源消耗问题和可持续发展的解决方案" class="random-prompt">
+                        <button class="btn-small btn-add" onclick="addPromptField()">➕ 添加</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin: 25px 0 15px 0; font-size: 16px; font-weight: 600;">测压模式</h3>
+            <div class="mode-selector" id="rpmModeSelector">
+                <div class="mode-option active" data-mode="fixed">
+                    <div style="font-size: 18px; margin-bottom: 5px;">📊 固定测压</div>
+                    <div style="font-size: 13px; color: #666;">设定固定RPM持续测试</div>
+                </div>
+                <div class="mode-option" data-mode="auto">
+                    <div style="font-size: 18px; margin-bottom: 5px;">📈 自动测压</div>
+                    <div style="font-size: 13px; color: #666;">从起始RPM逐步递增至极限</div>
+                </div>
+            </div>
+
+            <div id="fixedRPMGroup">
+                <div class="form-group">
+                    <label>目标RPM *</label>
+                    <input type="number" id="fixedRPM" value="60" min="1" max="1000">
+                </div>
+                <div class="form-group">
+                    <label>测试时长（分钟）</label>
+                    <input type="number" id="testDuration" value="0" min="0" max="1440" placeholder="0表示不限时，一直测试">
+                    <small>0 = 不限时（需手动停止），或设置具体分钟数（如：10分钟后自动停止）</small>
+                </div>
+            </div>
+
+            <div class="form-group" id="autoRPMGroup" style="display: none;">
+                <label>起始RPM</label>
+                <input type="number" id="autoRPM" value="10" min="1" max="1000">
+                <small>系统将每分钟自动增加10 RPM，直到达到承受极限自动停止</small>
+            </div>
+
+            <div class="control-buttons">
+                <button class="btn btn-primary" id="startBtn" onclick="startTest()">
+                    🚀 开始测压
+                </button>
+                <button class="btn btn-danger" id="stopBtn" onclick="stopTest()" disabled>
+                    ⏹ 停止测试
+                </button>
+            </div>
+        </div>
+
+        <!-- 统计数据 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value primary" id="totalRequests">0</div>
+                <div class="stat-label">总请求数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success" id="successRate">100%</div>
+                <div class="stat-label">总体成功率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value danger" id="failureRate">0%</div>
+                <div class="stat-label">总体失败率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value warning" id="avgResponseTime">0ms</div>
+                <div class="stat-label">平均响应时间</div>
+            </div>
+        </div>
+
+        <!-- 本分钟统计数据 -->
+        <div class="config-section" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);">
+            <h2 class="section-title">📊 本分钟统计 (实时)</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value primary" id="minuteTotalRequests">0</div>
+                    <div class="stat-label">本分钟请求数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value success" id="minuteSuccessRate">100%</div>
+                    <div class="stat-label">本分钟成功率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value danger" id="minuteFailureRate">0%</div>
+                    <div class="stat-label">本分钟失败率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalTimer" style="color: #667eea;">00:00:00</div>
+                    <div class="stat-label">总共运行时间</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成功/失败曲线图 -->
+        <div class="chart-container">
+            <h2 class="section-title">📈 每分钟成功/失败趋势图</h2>
+            <div class="chart-wrapper">
+                <canvas id="statsChart"></canvas>
+            </div>
+            <div id="chartPlaceholder" class="empty-state">开始测试后将显示趋势图</div>
+        </div>
+
+        <!-- 请求日志 -->
+        <div class="request-logs">
+            <div class="section-header">
+                <h2 class="section-title" style="margin: 0;">📋 请求日志</h2>
+                <button class="clear-logs-btn" onclick="clearLogs()">🗑️ 清除日志</button>
+            </div>
+            <div id="requestLogsContainer">
+                <div class="empty-state">暂无请求日志</div>
+            </div>
+        </div>
+
+        <!-- 错误统计 -->
+        <div class="error-summary">
+            <h2 class="section-title">错误统计</h2>
+            <div id="errorSummary" class="empty-state">暂无错误</div>
+        </div>
+
+        <!-- 错误日志 -->
+        <div class="error-logs">
+            <h2 class="section-title">最近错误日志</h2>
+            <div id="errorLogs" class="empty-state">暂无错误日志</div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let authToken = localStorage.getItem('authToken');
+        let currentRPMMode = 'fixed';
+        let currentPromptMode = 'fixed';
+        let currentRequestType = 'stream';
+        let statsChart;
+
+        // 验证登录
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        // 总运行时间计时器
+        let totalTimerInterval = null;
+        let testStartTime = null;
+
+        function startTotalTimer(startTime) {
+            testStartTime = startTime;
+            if (totalTimerInterval) {
+                clearInterval(totalTimerInterval);
+            }
+            totalTimerInterval = setInterval(() => {
+                if (!testStartTime) return;
+                const elapsed = Date.now() - testStartTime;
+                const seconds = Math.floor(elapsed / 1000) % 60;
+                const minutes = Math.floor(elapsed / 60000) % 60;
+                const hours = Math.floor(elapsed / 3600000);
+                document.getElementById('totalTimer').textContent = 
+                    `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function stopTotalTimer() {
+            if (totalTimerInterval) {
+                clearInterval(totalTimerInterval);
+                totalTimerInterval = null;
+            }
+            testStartTime = null;
+            document.getElementById('totalTimer').textContent = '00:00:00';
+        }
+
+        // 初始化
+        window.addEventListener('load', () => {
+            connectWebSocket();
+            initModeSelectors();
+            initChart();
+            initCharCounter();
+            loadSavedConfig(); // 加载保存的配置
+        });
+
+        // 初始化图表
+        function initChart() {
+            try {
+                const canvas = document.getElementById('statsChart');
+                if (!canvas) {
+                    console.error('Canvas element not found');
+                    return;
+                }
+                
+                const ctx = canvas.getContext('2d');
+                statsChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: '成功次数',
+                                data: [],
+                                borderColor: '#27ae60',
+                                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 2,
+                                pointHoverRadius: 5,
+                                borderWidth: 2
+                            },
+                            {
+                                label: '失败次数',
+                                data: [],
+                                borderColor: '#e74c3c',
+                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 2,
+                                pointHoverRadius: 5,
+                                borderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 20,
+                                    padding: 15,
+                                    font: {
+                                        size: 13
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 14
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    title: function(context) {
+                                        return '时间: ' + context[0].label;
+                                    },
+                                    afterBody: function(context) {
+                                        const index = context[0].dataIndex;
+                                        const success = context[0].dataset.data[index];
+                                        const failure = context[1].dataset.data[index];
+                                        const total = success + failure;
+                                        const rate = total > 0 ? ((success / total) * 100).toFixed(2) : '100.00';
+                                        return '\n成功率: ' + rate + '%';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true,
+                                    autoSkipPadding: 20,
+                                    maxTicksLimit: 20,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                },
+                                ticks: {
+                                    precision: 0,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            }
+                        },
+                        elements: {
+                            line: {
+                                borderJoinStyle: 'round'
+                            }
+                        }
+                    }
+                });
+                
+                console.log('Chart initialized successfully');
+            } catch (error) {
+                console.error('Error initializing chart:', error);
+            }
+        }
+
+        // 更新图表
+        function updateChart(minuteStats) {
+            if (!statsChart) {
+                console.warn('Chart not initialized');
+                return;
+            }
+            
+            if (!minuteStats || minuteStats.length === 0) {
+                document.getElementById('chartPlaceholder').style.display = 'block';
+                document.getElementById('statsChart').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('chartPlaceholder').style.display = 'none';
+            document.getElementById('statsChart').style.display = 'block';
+
+            const labels = minuteStats.map(stat => {
+                const date = new Date(stat.timestamp);
+                return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            });
+
+            const successData = minuteStats.map(stat => stat.successCount);
+            const failureData = minuteStats.map(stat => stat.failureCount);
+
+            statsChart.data.labels = labels;
+            statsChart.data.datasets[0].data = successData;
+            statsChart.data.datasets[1].data = failureData;
+            
+            try {
+                statsChart.update('none'); // 'none' for better performance
+            } catch (error) {
+                console.error('Error updating chart:', error);
+            }
+        }
+
+        // 初始化字符计数器
+        function initCharCounter() {
+            const textarea = document.getElementById('testPrompt');
+            const counter = document.getElementById('charCount');
+            
+            textarea.addEventListener('input', () => {
+                const length = textarea.value.length;
+                counter.textContent = length.toLocaleString();
+                
+                if (length > 200000) {
+                    counter.style.color = '#e74c3c';
+                    textarea.value = textarea.value.substring(0, 200000);
+                } else if (length > 180000) {
+                    counter.style.color = '#f39c12';
+                } else {
+                    counter.style.color = '#27ae60';
+                }
+            });
+        }
+
+        // WebSocket连接
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+            ws.onopen = () => {
+                console.log('WebSocket已连接');
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket连接断开，5秒后重连...');
+                setTimeout(connectWebSocket, 5000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket错误:', error);
+            };
+        }
+
+        // 处理WebSocket消息
+        function handleWebSocketMessage(message) {
+            switch (message.type) {
+                case 'stateUpdate':
+                case 'statsUpdate':
+                    updateUI(message.data);
+                    break;
+                case 'testStopped':
+                    handleTestStopped(message.data);
+                    break;
+                case 'rpmIncreased':
+                    showNotification(`RPM已增加至 ${message.data.newRPM}`);
+                    break;
+                case 'minuteStatsUpdate':
+                    updateChart(message.data);
+                    break;
+                case 'requestLogUpdate':
+                    addRequestLogToUI(message.data);
+                    break;
+                case 'logsCleared':
+                    updateRequestLogs([]);
+                    break;
+                case 'currentMinuteStatsUpdate':
+                    updateCurrentMinuteStats(message.data);
+                    break;
+            }
+        }
+
+        // 更新当前分钟统计
+        function updateCurrentMinuteStats(minuteStats) {
+            document.getElementById('minuteTotalRequests').textContent = minuteStats.totalRequests || 0;
+            document.getElementById('minuteSuccessRate').textContent = (minuteStats.successRate || 100) + '%';
+            document.getElementById('minuteFailureRate').textContent = (minuteStats.failureRate || 0) + '%';
+        }
+
+        // 更新UI
+        function updateUI(state) {
+            // 更新状态指示器
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            if (state.isRunning) {
+                indicator.className = 'status-indicator status-running';
+                const promptMode = state.config.promptMode === 'random' ? '随机语句' : '固定语句';
+                const rpmMode = state.mode === 'auto' ? '自动模式' : '固定模式';
+                statusText.textContent = `测试进行中 (${rpmMode} / ${promptMode})`;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                // 启动总运行时间计时器，使用服务器的startTime
+                if (!totalTimerInterval && state.startTime) {
+                    startTotalTimer(state.startTime);
+                }
+            } else {
+                indicator.className = 'status-indicator status-stopped';
+                statusText.textContent = '准备就绪';
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                stopTotalTimer();
+            }
+
+            // 更新当前RPM
+            document.getElementById('currentRPM').textContent = `当前 RPM: ${state.currentRPM || 0}`;
+
+            // 更新统计数据
+            const stats = state.stats || {};
+            document.getElementById('totalRequests').textContent = (stats.totalRequests || 0).toLocaleString();
+            document.getElementById('successRate').textContent = (stats.successRate || 100) + '%';
+            document.getElementById('failureRate').textContent = (stats.failureRate || 0) + '%';
+            document.getElementById('avgResponseTime').textContent = (stats.avgResponseTime || 0).toLocaleString() + 'ms';
+
+            // 更新图表
+            if (stats.minuteStats && stats.minuteStats.length > 0) {
+                updateChart(stats.minuteStats);
+            }
+
+            // 更新错误统计
+            updateErrorSummary(stats.errors || {});
+
+            // 更新错误日志
+            updateErrorLogs(stats.errorLogs || []);
+            
+            // 更新请求日志
+            updateRequestLogs(stats.requestLogs || []);
+        }
+
+        // 更新错误统计
+        function updateErrorSummary(errors) {
+            const container = document.getElementById('errorSummary');
+            
+            if (Object.keys(errors).length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无错误</div>';
+                return;
+            }
+
+            const sortedErrors = Object.entries(errors)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            container.innerHTML = sortedErrors.map(([message, count]) => `
+                <div class="error-item">
+                    <div class="error-message">${escapeHtml(message)}</div>
+                    <div class="error-count">${count}</div>
+                </div>
+            `).join('');
+        }
+
+        // 更新错误日志
+        function updateErrorLogs(logs) {
+            const container = document.getElementById('errorLogs');
+            
+            if (logs.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无错误日志</div>';
+                return;
+            }
+
+            container.innerHTML = logs.slice(0, 20).map(log => `
+                <div class="log-item">
+                    <span class="log-time">${new Date(log.time).toLocaleString()}</span>
+                    ${log.statusCode ? `<strong>[${log.statusCode}]</strong> ` : ''}
+                    ${escapeHtml(log.message)}
+                </div>
+            `).join('');
+        }
+
+        // 模式选择器
+        function initModeSelectors() {
+            // 请求类型选择器
+            const requestTypeOptions = document.querySelectorAll('#requestTypeSelector .mode-option');
+            requestTypeOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    requestTypeOptions.forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    currentRequestType = option.dataset.type;
+                });
+            });
+
+            // RPM模式选择器
+            const rpmOptions = document.querySelectorAll('#rpmModeSelector .mode-option');
+            rpmOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    rpmOptions.forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    currentRPMMode = option.dataset.mode;
+                    
+                    if (currentRPMMode === 'fixed') {
+                        document.getElementById('fixedRPMGroup').style.display = 'block';
+                        document.getElementById('autoRPMGroup').style.display = 'none';
+                    } else {
+                        document.getElementById('fixedRPMGroup').style.display = 'none';
+                        document.getElementById('autoRPMGroup').style.display = 'block';
+                    }
+                });
+            });
+
+            // 语句模式选择器
+            const promptOptions = document.querySelectorAll('#promptModeSelector .mode-option');
+            promptOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    promptOptions.forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    currentPromptMode = option.dataset.mode;
+                    
+                    if (currentPromptMode === 'fixed') {
+                        document.getElementById('fixedPromptGroup').style.display = 'block';
+                        document.getElementById('randomPromptGroup').style.display = 'none';
+                    } else {
+                        document.getElementById('fixedPromptGroup').style.display = 'none';
+                        document.getElementById('randomPromptGroup').style.display = 'block';
+                    }
+                });
+            });
+        }
+
+        // 添加随机语句输入框
+        function addPromptField() {
+            const list = document.getElementById('promptList');
+            const newItem = document.createElement('div');
+            newItem.className = 'prompt-item';
+            newItem.innerHTML = `
+                <input type="text" placeholder="输入测试语句..." class="random-prompt">
+                <button class="btn-small btn-remove" onclick="removePromptField(this)">❌ 删除</button>
+            `;
+            list.appendChild(newItem);
+        }
+
+        // 删除随机语句输入框
+        function removePromptField(btn) {
+            btn.parentElement.remove();
+        }
+
+        // 获取随机语句列表
+        function getRandomPrompts() {
+            const inputs = document.querySelectorAll('.random-prompt');
+            const prompts = [];
+            inputs.forEach(input => {
+                const value = input.value.trim();
+                if (value) {
+                    prompts.push(value);
+                }
+            });
+            return prompts;
+        }
+
+        // 保存配置到localStorage
+        function saveConfig() {
+            const config = {
+                url: document.getElementById('url').value.trim(),
+                modelName: document.getElementById('modelName').value.trim(),
+                apiKey: document.getElementById('apiKey').value.trim(),
+                testPrompt: document.getElementById('testPrompt').value.trim(),
+                fixedRPM: document.getElementById('fixedRPM').value,
+                autoRPM: document.getElementById('autoRPM').value,
+                testDuration: document.getElementById('testDuration').value,
+                rpmMode: currentRPMMode,
+                promptMode: currentPromptMode,
+                requestType: currentRequestType,
+                randomPrompts: getRandomPrompts()
+            };
+            localStorage.setItem('autoCeyaConfig', JSON.stringify(config));
+            console.log('配置已保存');
+        }
+
+        // 加载保存的配置
+        function loadSavedConfig() {
+            try {
+                const savedConfig = localStorage.getItem('autoCeyaConfig');
+                if (!savedConfig) {
+                    console.log('没有保存的配置');
+                    return;
+                }
+
+                const config = JSON.parse(savedConfig);
+                console.log('加载保存的配置:', config);
+
+                // 恢复基本配置
+                if (config.url) document.getElementById('url').value = config.url;
+                if (config.modelName) document.getElementById('modelName').value = config.modelName;
+                if (config.apiKey) document.getElementById('apiKey').value = config.apiKey;
+                if (config.testPrompt) document.getElementById('testPrompt').value = config.testPrompt;
+                if (config.fixedRPM) document.getElementById('fixedRPM').value = config.fixedRPM;
+                if (config.autoRPM) document.getElementById('autoRPM').value = config.autoRPM;
+                if (config.testDuration) document.getElementById('testDuration').value = config.testDuration;
+
+                // 恢复请求类型
+                if (config.requestType) {
+                    currentRequestType = config.requestType;
+                    document.querySelectorAll('#requestTypeSelector .mode-option').forEach(opt => {
+                        opt.classList.remove('active');
+                        if (opt.dataset.type === config.requestType) {
+                            opt.classList.add('active');
+                        }
+                    });
+                }
+
+                // 恢复RPM模式
+                if (config.rpmMode) {
+                    currentRPMMode = config.rpmMode;
+                    document.querySelectorAll('#rpmModeSelector .mode-option').forEach(opt => {
+                        opt.classList.remove('active');
+                        if (opt.dataset.mode === config.rpmMode) {
+                            opt.classList.add('active');
+                        }
+                    });
+                    
+                    if (config.rpmMode === 'fixed') {
+                        document.getElementById('fixedRPMGroup').style.display = 'block';
+                        document.getElementById('autoRPMGroup').style.display = 'none';
+                    } else {
+                        document.getElementById('fixedRPMGroup').style.display = 'none';
+                        document.getElementById('autoRPMGroup').style.display = 'block';
+                    }
+                }
+
+                // 恢复语句模式
+                if (config.promptMode) {
+                    currentPromptMode = config.promptMode;
+                    document.querySelectorAll('#promptModeSelector .mode-option').forEach(opt => {
+                        opt.classList.remove('active');
+                        if (opt.dataset.mode === config.promptMode) {
+                            opt.classList.add('active');
+                        }
+                    });
+                    
+                    if (config.promptMode === 'fixed') {
+                        document.getElementById('fixedPromptGroup').style.display = 'block';
+                        document.getElementById('randomPromptGroup').style.display = 'none';
+                    } else {
+                        document.getElementById('fixedPromptGroup').style.display = 'none';
+                        document.getElementById('randomPromptGroup').style.display = 'block';
+                    }
+                }
+
+                // 恢复随机语句列表
+                if (config.randomPrompts && config.randomPrompts.length > 0) {
+                    const list = document.getElementById('promptList');
+                    list.innerHTML = '';
+                    config.randomPrompts.forEach((prompt, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'prompt-item';
+                        item.innerHTML = `
+                            <input type="text" value="${escapeHtml(prompt)}" class="random-prompt">
+                            <button class="btn-small ${index === config.randomPrompts.length - 1 ? 'btn-add' : 'btn-remove'}" 
+                                    onclick="${index === config.randomPrompts.length - 1 ? 'addPromptField()' : 'removePromptField(this)'}">
+                                ${index === config.randomPrompts.length - 1 ? '➕ 添加' : '❌ 删除'}
+                            </button>
+                        `;
+                        list.appendChild(item);
+                    });
+                }
+
+                // 更新字符计数
+                const charCount = document.getElementById('testPrompt').value.length;
+                document.getElementById('charCount').textContent = charCount.toLocaleString();
+
+                showNotification('已自动加载上次保存的配置', 'success');
+            } catch (error) {
+                console.error('加载配置失败:', error);
+            }
+        }
+
+        // 开始测试
+        async function startTest() {
+            const url = document.getElementById('url').value.trim();
+            const modelName = document.getElementById('modelName').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const rpm = currentRPMMode === 'fixed' 
+                ? parseInt(document.getElementById('fixedRPM').value)
+                : parseInt(document.getElementById('autoRPM').value);
+            const testDuration = currentRPMMode === 'fixed' 
+                ? parseInt(document.getElementById('testDuration').value) || 0
+                : 0;
+
+            if (!url || !modelName || !apiKey) {
+                alert('请填写URL、模型名称和API密钥！');
+                return;
+            }
+
+            let testPrompt = '';
+            let randomPrompts = [];
+
+            if (currentPromptMode === 'fixed') {
+                testPrompt = document.getElementById('testPrompt').value.trim();
+                if (!testPrompt) {
+                    alert('请填写测试语句！');
+                    return;
+                }
+            } else {
+                randomPrompts = getRandomPrompts();
+                if (randomPrompts.length === 0) {
+                    alert('请至少添加一条测试语句！');
+                    return;
+                }
+            }
+
+            // 保存配置
+            saveConfig();
+
+            try {
+                const response = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        mode: currentRPMMode,
+                        rpm,
+                        url,
+                        modelName,
+                        apiKey,
+                        testPrompt,
+                        promptMode: currentPromptMode,
+                        randomPrompts,
+                        requestType: currentRequestType,
+                        testDuration
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    const durationMsg = testDuration > 0 ? `，将运行${testDuration}分钟后自动停止` : '';
+                    showNotification('测试已启动' + durationMsg + '！', 'success');
+                } else {
+                    alert('启动失败：' + data.error);
+                }
+            } catch (error) {
+                alert('网络错误：' + error.message);
+            }
+        }
+
+        // 停止测试
+        async function stopTest() {
+            try {
+                const response = await fetch('/api/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('测试已停止', 'warning');
+                }
+            } catch (error) {
+                alert('网络错误：' + error.message);
+            }
+        }
+
+        // 测试停止处理
+        function handleTestStopped(data) {
+            const message = `测试已停止\n原因: ${data.reason}\n总请求: ${data.finalStats.totalRequests}\n成功率: ${data.finalStats.successRate}%${data.maxRPM ? `\n最大RPM: ${data.maxRPM}` : ''}`;
+            alert(message);
+        }
+
+        // 通知提示
+        function showNotification(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 更新请求日志显示
+        function updateRequestLogs(logs) {
+            const container = document.getElementById('requestLogsContainer');
+            
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无请求日志</div>';
+                return;
+            }
+
+            const tableHTML = `
+                <table class="request-log-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>状态</th>
+                            <th>请求类型</th>
+                            <th>状态码</th>
+                            <th>耗时(ms)</th>
+                            <th>模型</th>
+                            <th>详情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${logs.slice(0, 100).map(log => {
+                            const time = new Date(log.time).toLocaleTimeString('zh-CN');
+                            const statusBadge = log.status === 'success' 
+                                ? '<span class="status-badge success">成功</span>'
+                                : '<span class="status-badge failure">失败</span>';
+                            
+                            return `
+                                <tr>
+                                    <td>${time}</td>
+                                    <td>${statusBadge}</td>
+                                    <td>${log.requestType || '流式'}</td>
+                                    <td>${log.statusCode || '-'}</td>
+                                    <td>${log.responseTime}</td>
+                                    <td>${escapeHtml(log.modelName)}</td>
+                                    <td>
+                                        ${log.error ? `<div class="error-detail">${escapeHtml(log.error)}</div>` : '-'}
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = tableHTML;
+        }
+
+        // 添加单条日志到UI
+        function addRequestLogToUI(log) {
+            const container = document.getElementById('requestLogsContainer');
+            
+            // 如果是空状态，先创建表格
+            if (container.innerHTML.includes('empty-state')) {
+                updateRequestLogs([log]);
+                return;
+            }
+
+            // 获取tbody
+            const tbody = container.querySelector('tbody');
+            if (!tbody) {
+                updateRequestLogs([log]);
+                return;
+            }
+
+            const time = new Date(log.time).toLocaleTimeString('zh-CN');
+            const statusBadge = log.status === 'success' 
+                ? '<span class="status-badge success">成功</span>'
+                : '<span class="status-badge failure">失败</span>';
+            
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${time}</td>
+                <td>${statusBadge}</td>
+                <td>${log.requestType || '流式'}</td>
+                <td>${log.statusCode || '-'}</td>
+                <td>${log.responseTime}</td>
+                <td>${escapeHtml(log.modelName)}</td>
+                <td>
+                    ${log.error ? `<div class="error-detail">${escapeHtml(log.error)}</div>` : '-'}
+                </td>
+            `;
+            
+            tbody.insertBefore(newRow, tbody.firstChild);
+            
+            // 限制显示100条
+            const rows = tbody.querySelectorAll('tr');
+            if (rows.length > 100) {
+                tbody.removeChild(tbody.lastChild);
+            }
+        }
+
+        // 清除日志
+        async function clearLogs() {
+            if (!confirm('确定要清除所有请求日志吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/clearLogs', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    updateRequestLogs([]);
+                    showNotification('日志已清除', 'success');
+                }
+            } catch (error) {
+                alert('清除日志失败：' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

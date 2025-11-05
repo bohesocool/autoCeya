@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  autoceya:
+    build: .
+    container_name: autoceya
+    ports:
+      - "8998:8998"
+    environment:
+      - PORT=8998
+      - AUTH_SECRET=${AUTH_SECRET:-your_secure_password_here}
+      - DEFAULT_SUCCESS_THRESHOLD=80
+      - DEFAULT_MAX_FAILURES=10
+      - DEFAULT_RESPONSE_TIME_THRESHOLD=150000
+    restart: unless-stopped
+    volumes:
+      # 如果需要持久化日志，可以挂载卷
+      - ./logs:/app/logs
+
