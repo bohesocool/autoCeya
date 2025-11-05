@@ -2,7 +2,12 @@ version: '3.8'
 
 services:
   autoceya:
-    build: .
+    # 使用Docker Hub镜像（推荐）
+    image: bohesocool/autoceya:latest
+    
+    # 或者本地构建（开发用）
+    # build: .
+    
     container_name: autoceya
     ports:
       - "8998:8998"

@@ -63,6 +63,35 @@
 
 **最简单快速的部署方式！**
 
+#### 使用Docker Hub镜像（最快捷）
+
+```bash
+# 1. 创建docker-compose.yml文件
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+services:
+  autoceya:
+    image: bohesocool/autoceya:latest
+    container_name: autoceya
+    ports:
+      - "8998:8998"
+    environment:
+      - AUTH_SECRET=your_secure_password_here
+    restart: unless-stopped
+EOF
+
+# 2. 启动容器
+docker-compose up -d
+
+# 3. 查看日志
+docker-compose logs -f
+
+# 4. 停止服务
+docker-compose down
+```
+
+#### 或者克隆项目本地构建
+
 1. **克隆项目**
 ```bash
 git clone <your-repo>
@@ -91,6 +120,17 @@ docker-compose down
 4. **访问系统**
 
 打开浏览器访问: `http://localhost:8998`
+
+#### 使用特定版本
+
+```yaml
+# 生产环境推荐使用固定版本号
+services:
+  autoceya:
+    image: bohesocool/autoceya:1.0.0  # 使用特定版本
+```
+
+**查看所有可用版本：** https://hub.docker.com/r/bohesocool/autoceya/tags
 
 ### 方式二：普通部署
 
@@ -269,6 +309,26 @@ autoCeya/
     └── dashboard.html    # 控制面板
 ```
 
+## 🔄 版本更新
+
+### 更新到最新版本
+
+```bash
+# 拉取最新镜像
+docker-compose pull
+
+# 重新创建容器
+docker-compose up -d
+```
+
+### 查看版本历史
+
+查看 [CHANGELOG.md](./CHANGELOG.md) 了解每个版本的更新内容。
+
+### 发布新版本
+
+开发者请查看 [VERSION_RELEASE.md](./VERSION_RELEASE.md) 了解如何发布新版本。
+
 ## 🔐 安全建议
 
 1. ✅ **务必修改默认密钥**: 在 `.env` 中设置强密码
@@ -276,6 +336,7 @@ autoCeya/
 3. ✅ **使用HTTPS**: 生产环境建议配置SSL证书
 4. ✅ **限制访问IP**: 可通过防火墙限制访问来源
 5. ✅ **定期更新依赖**: 运行 `npm audit` 检查安全漏洞
+6. ✅ **使用固定版本**: 生产环境使用特定版本号而非`latest`
 
 ## 📝 API接口说明
 

@@ -3,6 +3,8 @@ name: Docker Build and Push
 on:
   push:
     branches: [ "main" ]  # 当推送到main分支时触发
+    tags:
+      - 'v*'  # 当推送版本标签时触发（如 v1.0.0）
   pull_request:
     branches: [ "main" ]  # 当对main分支发起PR时触发
 
@@ -23,15 +25,31 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
+    - name: Extract metadata (tags, labels)
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: bohesocool/autoceya
+        tags: |
+          # 为分支推送生成latest标签
+          type=raw,value=latest,enable={{is_default_branch}}
+          # 为标签生成版本号（如 v1.0.0 -> 1.0.0）
+          type=semver,pattern={{version}}
+          # 为标签生成主版本号（如 v1.0.0 -> 1）
+          type=semver,pattern={{major}}
+          # 为标签生成主.次版本号（如 v1.0.0 -> 1.0）
+          type=semver,pattern={{major}}.{{minor}}
+          # 短commit SHA
+          type=sha
+    
     - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/autoceya:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/autoceya:${{ github.sha }}
-        cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/autoceya:buildcache
-        cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/autoceya:buildcache,mode=max
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=registry,ref=bohesocool/autoceya:buildcache
+        cache-to: type=registry,ref=bohesocool/autoceya:buildcache,mode=max
         platforms: linux/amd64,linux/arm64  # 支持多平台
 
