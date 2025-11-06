@@ -512,20 +512,34 @@
         <div class="config-section">
             <h2 class="section-title">测试配置</h2>
             
+            <!-- AI 提供商选择 -->
+            <h3 style="margin: 25px 0 15px 0; font-size: 16px; font-weight: 600;">⭐ AI 提供商选择（v2.0新增）</h3>
+            <div class="form-group">
+                <label>选择 AI 提供商 *</label>
+                <select id="providerType" onchange="updateProviderHints()">
+                    <option value="gemini">Gemini (Google)</option>
+                    <option value="openai">OpenAI (GPT)</option>
+                    <option value="claude">Claude (Anthropic)</option>
+                </select>
+            </div>
+
             <div class="form-grid">
                 <div class="form-group">
                     <label>测试站点URL *</label>
                     <input type="text" id="url" placeholder="https://generativelanguage.googleapis.com">
+                    <small id="urlHint" style="color: #999; font-size: 12px; margin-top: 5px;"></small>
                 </div>
                 
                 <div class="form-group">
                     <label>模型名称 *</label>
                     <input type="text" id="modelName" placeholder="gemini-1.5-flash">
+                    <small id="modelHint" style="color: #999; font-size: 12px; margin-top: 5px;"></small>
                 </div>
                 
                 <div class="form-group">
                     <label>API密钥 *</label>
                     <input type="password" id="apiKey" placeholder="your-api-key">
+                    <small id="apiKeyHint" style="color: #999; font-size: 12px; margin-top: 5px;"></small>
                 </div>
             </div>
 
@@ -770,6 +784,7 @@
             initModeSelectors();
             initChart();
             initCharCounter();
+            updateProviderHints(); // ⭐ v2.0新增：初始化AI提供商提示
             loadSavedConfig(); // 加载保存的配置
         });
 
@@ -1185,6 +1200,7 @@
         // 保存配置到localStorage
         function saveConfig() {
             const config = {
+                providerType: document.getElementById('providerType').value, // ⭐ v2.0新增
                 url: document.getElementById('url').value.trim(),
                 modelName: document.getElementById('modelName').value.trim(),
                 apiKey: document.getElementById('apiKey').value.trim(),
@@ -1212,6 +1228,12 @@
 
                 const config = JSON.parse(savedConfig);
                 console.log('加载保存的配置:', config);
+
+                // ⭐ v2.0新增：恢复AI提供商选择
+                if (config.providerType) {
+                    document.getElementById('providerType').value = config.providerType;
+                    updateProviderHints(); // 更新提示信息
+                }
 
                 // 恢复基本配置
                 if (config.url) document.getElementById('url').value = config.url;
@@ -1300,7 +1322,38 @@
         }
 
         // 开始测试
+        // ⭐ v2.0新增：根据AI提供商显示不同的提示信息
+        function updateProviderHints() {
+            const providerType = document.getElementById('providerType').value;
+            const urlInput = document.getElementById('url');
+            const modelInput = document.getElementById('modelName');
+            const urlHint = document.getElementById('urlHint');
+            const modelHint = document.getElementById('modelHint');
+            const apiKeyHint = document.getElementById('apiKeyHint');
+            
+            if (providerType === 'gemini') {
+                urlInput.placeholder = 'https://generativelanguage.googleapis.com';
+                modelInput.placeholder = 'gemini-1.5-flash';
+                urlHint.textContent = '示例：https://generativelanguage.googleapis.com';
+                modelHint.textContent = '示例：gemini-1.5-flash, gemini-1.5-pro, gemini-pro';
+                apiKeyHint.textContent = '从 Google AI Studio 获取';
+            } else if (providerType === 'openai') {
+                urlInput.placeholder = 'https://api.openai.com';
+                modelInput.placeholder = 'gpt-4';
+                urlHint.textContent = '示例：https://api.openai.com 或第三方代理地址';
+                modelHint.textContent = '示例：gpt-4, gpt-3.5-turbo, gpt-4-turbo';
+                apiKeyHint.textContent = '以 sk- 开头的密钥';
+            } else if (providerType === 'claude') {
+                urlInput.placeholder = 'https://api.anthropic.com';
+                modelInput.placeholder = 'claude-3-opus-20240229';
+                urlHint.textContent = '示例：https://api.anthropic.com';
+                modelHint.textContent = '示例：claude-3-opus-20240229, claude-3-sonnet-20240229';
+                apiKeyHint.textContent = '以 sk-ant- 开头的密钥';
+            }
+        }
+
         async function startTest() {
+            const providerType = document.getElementById('providerType').value; // ⭐ v2.0新增
             const url = document.getElementById('url').value.trim();
             const modelName = document.getElementById('modelName').value.trim();
             const apiKey = document.getElementById('apiKey').value.trim();
@@ -1344,6 +1397,7 @@
                         'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
+                        providerType, // ⭐ v2.0新增：AI提供商类型
                         mode: currentRPMMode,
                         rpm,
                         url,

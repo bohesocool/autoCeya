@@ -1,3 +1,5 @@
+// 兼容性配置文件 - 保持旧版 server.js 能正常工作
+// 新代码请使用 src/config/index.js
 require('dotenv').config();
 
 module.exports = {

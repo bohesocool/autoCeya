@@ -1,5 +1,107 @@
 # 更新日志
 
+## [2.0.0] - 2025-11-07
+
+### 🎉 重大更新
+
+#### 多AI模型支持
+- ✅ **Gemini支持**：保持原有完整功能
+- ✅ **OpenAI支持**：支持 GPT-3.5、GPT-4 等所有模型
+- ✅ **Claude支持**：支持 Claude-3 系列模型
+- ✅ **统一接口**：通过 providerType 参数切换不同的AI提供商
+
+#### 代码架构重构
+- ✅ **模块化设计**：清晰的分层架构（src/controllers, services, routes, middlewares）
+- ✅ **服务层封装**：AIService 支持多模型扩展
+- ✅ **控制器分离**：业务逻辑与路由分离
+- ✅ **中间件系统**：认证、验证、错误处理、限流等
+
+#### 安全性增强
+- ✅ **CORS配置**：可配置的跨域访问控制
+- ✅ **请求频率限制**：防止API滥用
+- ✅ **参数验证**：严格的输入验证中间件
+- ✅ **统一错误处理**：完善的错误捕获机制
+- ✅ **非root运行**：Docker 容器安全加固
+
+#### 日志系统升级
+- ✅ **Winston日志**：专业的日志管理
+- ✅ **分级日志**：error, warn, info, debug
+- ✅ **日志轮转**：自动清理旧日志
+- ✅ **结构化输出**：便于分析和监控
+
+#### Docker优化
+- ✅ **多阶段构建**：减小镜像体积约30%
+- ✅ **健康检查**：自动监测容器健康状态
+- ✅ **优雅关闭**：正确处理 SIGTERM/SIGINT 信号
+- ✅ **安全加固**：使用非root用户运行
+
+#### API文档
+- ✅ **Swagger UI**：完整的API文档界面
+- ✅ **OpenAPI 3.0**：标准化的API规范
+- ✅ **在线测试**：可直接在文档中测试API
+
+#### 监控和运维
+- ✅ **健康检查端点**：/health
+- ✅ **系统指标端点**：/metrics
+- ✅ **完善的日志**：logs/combined.log, logs/error.log
+
+### 📝 API变更
+
+#### 启动测压接口新增参数
+```json
+{
+  "providerType": "gemini|openai|claude"  // 必填：AI提供商类型
+}
+```
+
+### 📦 新增依赖
+- winston: ^3.11.0 - 日志系统
+- swagger-jsdoc: ^6.2.8 - API文档生成
+- swagger-ui-express: ^5.0.0 - API文档界面
+
+### 📋 新增文件
+```
+src/
+├── config/index.js          # 配置管理
+├── controllers/             # 控制器层
+│   ├── authController.js
+│   ├── testController.js
+│   └── historyController.js
+├── services/                # 服务层
+│   ├── aiService.js         # AI服务（多模型支持）
+│   └── stressTestService.js # 测压服务
+├── routes/                  # 路由层
+│   ├── auth.js
+│   ├── test.js
+│   ├── history.js
+│   └── index.js
+├── middlewares/             # 中间件
+│   ├── auth.js
+│   ├── cors.js
+│   ├── errorHandler.js
+│   ├── rateLimiter.js
+│   └── validator.js
+├── utils/                   # 工具类
+│   └── logger.js            # 日志工具
+└── swagger.js               # Swagger配置
+```
+
+### 📚 新增文档
+- `.env.example` - 环境变量模板
+- `MIGRATION.md` - 迁移指南
+- `README-v2.md` - v2.0 使用文档
+
+### ⚠️ 向后兼容
+- 保留 `server.js`（旧版）
+- 新版使用 `server-new.js`
+- 配置文件向后兼容
+- 数据库结构不变
+
+### 🔧 配置变更
+参考 `.env.example` 获取完整配置列表
+
+---
+
 ## [未发布] - 2025-11-05
 
 ### ✨ 新增功能
