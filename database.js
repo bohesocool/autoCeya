@@ -1,16 +1,22 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const config = require('./src/config');
+
+// 使用配置文件中的数据库路径
+const dbPath = path.resolve(config.database.path);
+const dbDir = path.dirname(dbPath);
 
 // 确保数据库目录存在
-const dbDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
+  console.log(`数据库目录已创建: ${dbDir}`);
 }
 
 // 创建或打开数据库
-const dbPath = path.join(dbDir, 'autoceya.db');
+console.log(`数据库路径: ${dbPath}`);
 const db = new Database(dbPath);
+console.log('数据库连接成功');
 
 // 创建历史记录表
 db.exec(`

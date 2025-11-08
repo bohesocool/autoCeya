@@ -126,3 +126,4 @@ router.post('/clearLogs', authenticate, asyncHandler(testController.clearLogs));
 
 module.exports = router;
 
+

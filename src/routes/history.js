@@ -102,3 +102,4 @@ router.post('/clear', authenticate, asyncHandler(historyController.clearHistory)
 
 module.exports = router;
 
+
