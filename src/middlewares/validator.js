@@ -36,8 +36,8 @@ const validateStartTest = (req, res, next) => {
   }
 
   // 验证 RPM
-  if (mode === 'fixed' && (!rpm || rpm < 1 || rpm > 1000)) {
-    throw new AppError('固定模式下RPM必须在1-1000之间', 400);
+  if (mode === 'fixed' && (!rpm || rpm < 1 || rpm > 100000)) {
+    throw new AppError('固定模式下RPM必须在1-100000之间', 400);
   }
 
   // 验证测试语句模式

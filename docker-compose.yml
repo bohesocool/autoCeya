@@ -9,6 +9,10 @@ services:
     # build: .
     
     container_name: autoceya
+    
+    # 以root用户运行，避免权限问题
+    user: "0:0"
+    
     ports:
       - "8998:8998"
     environment:

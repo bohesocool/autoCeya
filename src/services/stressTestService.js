@@ -185,7 +185,20 @@ class StressTestService {
     this.testState.isRunning = false;
     this.clearAllTimers();
     
+    // 保存测试历史
+    this.saveHistory('手动停止', this.testState.mode === 'auto' ? this.testState.currentRPM : null);
+    
     log.testStop('手动停止', this.testState.stats);
+    
+    // 广播测试停止消息
+    this.broadcast({
+      type: 'testStopped',
+      data: { 
+        reason: '手动停止', 
+        finalStats: this.testState.stats,
+        maxRPM: this.testState.mode === 'auto' ? this.testState.currentRPM : null,
+      },
+    });
 
     return { success: true, message: '测试已停止' };
   }
@@ -352,9 +365,16 @@ class StressTestService {
         ((this.testState.currentMinuteStats.failureCount / minuteTotal) * 100).toFixed(2);
     }
     
+    // 广播总体统计更新
     this.broadcast({
       type: 'statsUpdate',
       data: this.testState,
+    });
+    
+    // 广播当前分钟统计更新（实时请求数）
+    this.broadcast({
+      type: 'currentMinuteStatsUpdate',
+      data: this.testState.currentMinuteStats,
     });
   }
 
@@ -469,11 +489,6 @@ class StressTestService {
     this.timers.requestTimer = setInterval(async () => {
       if (!this.testState.isRunning) {
         this.clearAllTimers();
-        this.saveHistory('手动停止');
-        this.broadcast({
-          type: 'testStopped',
-          data: { reason: '手动停止', finalStats: this.testState.stats },
-        });
         return;
       }
       

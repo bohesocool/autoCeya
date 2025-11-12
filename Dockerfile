@@ -22,24 +22,17 @@ FROM node:18-alpine
 # 安装运行时依赖
 RUN apk add --no-cache sqlite dumb-init
 
-# 创建非root用户
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
 WORKDIR /app
 
 # 从构建阶段复制依赖
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules ./node_modules
 
 # 复制项目文件
-COPY --chown=nodejs:nodejs . .
+COPY . .
 
-# 创建必要的目录
+# 创建必要的目录并设置权限
 RUN mkdir -p /app/data /app/logs && \
-    chown -R nodejs:nodejs /app/data /app/logs
-
-# 切换到非root用户
-USER nodejs
+    chmod -R 777 /app/data /app/logs
 
 # 暴露端口
 EXPOSE 8998

@@ -316,27 +316,36 @@ docker cp autoceya:/app/logs ./logs_backup
 docker export autoceya > autoceya_backup.tar
 ```
 
-### Q5: Docker历史记录不显示？
+### Q5: Docker历史记录不显示或无法保存？
 
-如果遇到Docker部署后历史记录不显示的问题，请确保：
+如果遇到Docker部署后历史记录无法保存的问题（错误：`SQLITE_READONLY`），这是权限问题：
 
-1. **挂载了data目录**（已在上述配置中包含）
-```yaml
-volumes:
-  - ./data:/app/data
-  - ./logs:/app/logs
+**解决方法：**
+
+```bash
+# 1. 停止容器
+docker-compose down
+
+# 2. 删除旧的data和logs目录（如果存在）
+rm -rf data logs
+
+# 3. 重新启动（容器会自动创建目录）
+docker-compose up -d
+
+# 4. 验证日志
+docker-compose logs -f
 ```
 
-2. **检查目录权限**
+**如果问题依然存在，手动创建目录并设置权限：**
+
 ```bash
-# 创建目录并设置权限
+# Linux/Mac
 mkdir -p data logs
 chmod -R 777 data logs
-```
+docker-compose up -d
 
-3. **重启容器**
-```bash
-docker-compose down
+# Windows PowerShell
+mkdir data, logs
 docker-compose up -d
 ```
 
