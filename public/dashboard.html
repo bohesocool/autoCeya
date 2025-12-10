@@ -651,6 +651,28 @@
                 <small>系统将每分钟自动增加10 RPM，直到达到承受极限自动停止</small>
             </div>
 
+            <!-- 自动测压阈值配置 -->
+            <div id="autoThresholdGroup" style="display: none;">
+                <h3 style="margin: 25px 0 15px 0; font-size: 16px; font-weight: 600;">⚙️ 自动测压阈值配置</h3>
+                <div style="background: #fff8e1; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #f39c12;">
+                    <small style="color: #856404;">💡 以下配置仅对自动测压模式生效，用于判定何时停止测试</small>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>成功率阈值 (%)</label>
+                        <input type="number" id="successThreshold" value="75" min="0" max="100" step="1">
+                        <small>低于此成功率判定为过载，<strong>0表示不判定</strong></small>
+                        <small id="successThresholdError" style="color: #e74c3c; display: none;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label>最大连续失败次数</label>
+                        <input type="number" id="maxFailures" value="20" min="0" step="1">
+                        <small>连续失败达到此次数判定为过载，<strong>0表示不判定</strong></small>
+                        <small id="maxFailuresError" style="color: #e74c3c; display: none;"></small>
+                    </div>
+                </div>
+            </div>
+
             <div class="control-buttons">
                 <button class="btn btn-primary" id="startBtn" onclick="startTest()">
                     🚀 开始测压
@@ -1142,9 +1164,11 @@
                     if (currentRPMMode === 'fixed') {
                         document.getElementById('fixedRPMGroup').style.display = 'block';
                         document.getElementById('autoRPMGroup').style.display = 'none';
+                        document.getElementById('autoThresholdGroup').style.display = 'none';
                     } else {
                         document.getElementById('fixedRPMGroup').style.display = 'none';
                         document.getElementById('autoRPMGroup').style.display = 'block';
+                        document.getElementById('autoThresholdGroup').style.display = 'block';
                     }
                 });
             });
@@ -1198,6 +1222,43 @@
             return prompts;
         }
 
+        // 验证阈值配置
+        function validateThresholdConfig() {
+            let isValid = true;
+            
+            // 验证成功率阈值
+            const successThresholdInput = document.getElementById('successThreshold');
+            const successThresholdError = document.getElementById('successThresholdError');
+            const successThreshold = parseFloat(successThresholdInput.value);
+            
+            if (isNaN(successThreshold) || successThreshold < 0 || successThreshold > 100) {
+                successThresholdError.textContent = '成功率阈值必须在0-100之间';
+                successThresholdError.style.display = 'block';
+                successThresholdInput.style.borderColor = '#e74c3c';
+                isValid = false;
+            } else {
+                successThresholdError.style.display = 'none';
+                successThresholdInput.style.borderColor = '#e0e0e0';
+            }
+            
+            // 验证最大连续失败次数
+            const maxFailuresInput = document.getElementById('maxFailures');
+            const maxFailuresError = document.getElementById('maxFailuresError');
+            const maxFailures = parseFloat(maxFailuresInput.value);
+            
+            if (isNaN(maxFailures) || maxFailures < 0 || !Number.isInteger(maxFailures)) {
+                maxFailuresError.textContent = '最大连续失败次数必须为非负整数';
+                maxFailuresError.style.display = 'block';
+                maxFailuresInput.style.borderColor = '#e74c3c';
+                isValid = false;
+            } else {
+                maxFailuresError.style.display = 'none';
+                maxFailuresInput.style.borderColor = '#e0e0e0';
+            }
+            
+            return isValid;
+        }
+
         // 保存配置到localStorage
         function saveConfig() {
             const config = {
@@ -1212,7 +1273,10 @@
                 rpmMode: currentRPMMode,
                 promptMode: currentPromptMode,
                 requestType: currentRequestType,
-                randomPrompts: getRandomPrompts()
+                randomPrompts: getRandomPrompts(),
+                // 阈值配置
+                successThreshold: parseInt(document.getElementById('successThreshold').value) || 75,
+                maxFailures: parseInt(document.getElementById('maxFailures').value) || 20
             };
             localStorage.setItem('autoCeyaConfig', JSON.stringify(config));
             console.log('配置已保存');
@@ -1269,9 +1333,11 @@
                     if (config.rpmMode === 'fixed') {
                         document.getElementById('fixedRPMGroup').style.display = 'block';
                         document.getElementById('autoRPMGroup').style.display = 'none';
+                        document.getElementById('autoThresholdGroup').style.display = 'none';
                     } else {
                         document.getElementById('fixedRPMGroup').style.display = 'none';
                         document.getElementById('autoRPMGroup').style.display = 'block';
+                        document.getElementById('autoThresholdGroup').style.display = 'block';
                     }
                 }
 
@@ -1310,6 +1376,14 @@
                         `;
                         list.appendChild(item);
                     });
+                }
+
+                // 恢复阈值配置
+                if (config.successThreshold !== undefined) {
+                    document.getElementById('successThreshold').value = config.successThreshold;
+                }
+                if (config.maxFailures !== undefined) {
+                    document.getElementById('maxFailures').value = config.maxFailures;
                 }
 
                 // 更新字符计数
@@ -1370,6 +1444,12 @@
                 return;
             }
 
+            // 自动模式下验证阈值配置
+            if (currentRPMMode === 'auto' && !validateThresholdConfig()) {
+                alert('请检查阈值配置！');
+                return;
+            }
+
             let testPrompt = '';
             let randomPrompts = [];
 
@@ -1408,7 +1488,12 @@
                         promptMode: currentPromptMode,
                         randomPrompts,
                         requestType: currentRequestType,
-                        testDuration
+                        testDuration,
+                        // 自动模式下发送阈值配置
+                        ...(currentRPMMode === 'auto' && {
+                            successThreshold: parseInt(document.getElementById('successThreshold').value) || 75,
+                            maxFailures: parseInt(document.getElementById('maxFailures').value) || 20
+                        })
                     })
                 });
 

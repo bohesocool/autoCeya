@@ -14,9 +14,13 @@ class StressTestService {
       minuteStatsTimer: null,
       rpmUpdateTimer: null,
       durationTimer: null,
+      broadcastThrottleTimer: null,
     };
     this.aiService = null;
     this.clients = new Set(); // WebSocket 客户端
+    this.pendingBroadcast = false; // 节流标志
+    this.lastBroadcastTime = 0; // 上次广播时间
+    this.broadcastInterval = 200; // 广播间隔（毫秒）
   }
 
   /**
@@ -98,6 +102,51 @@ class StressTestService {
   }
 
   /**
+   * 节流广播统计更新
+   */
+  broadcastStatsThrottled() {
+    const now = Date.now();
+    
+    // 如果距离上次广播时间小于间隔，则标记待广播
+    if (now - this.lastBroadcastTime < this.broadcastInterval) {
+      if (!this.pendingBroadcast) {
+        this.pendingBroadcast = true;
+        // 延迟广播
+        if (this.timers.broadcastThrottleTimer) {
+          clearTimeout(this.timers.broadcastThrottleTimer);
+        }
+        this.timers.broadcastThrottleTimer = setTimeout(() => {
+          this.executeBroadcast();
+        }, this.broadcastInterval - (now - this.lastBroadcastTime));
+      }
+      return;
+    }
+    
+    // 可以立即广播
+    this.executeBroadcast();
+  }
+
+  /**
+   * 执行广播
+   */
+  executeBroadcast() {
+    this.pendingBroadcast = false;
+    this.lastBroadcastTime = Date.now();
+    
+    // 广播总体统计更新
+    this.broadcast({
+      type: 'statsUpdate',
+      data: this.testState,
+    });
+    
+    // 广播当前分钟统计更新（实时请求数）
+    this.broadcast({
+      type: 'currentMinuteStatsUpdate',
+      data: this.testState.currentMinuteStats,
+    });
+  }
+
+  /**
    * 获取当前状态
    */
   getState() {
@@ -135,6 +184,11 @@ class StressTestService {
         requestType: testConfig.requestType || 'stream',
         testDuration: testConfig.mode === 'fixed' ? (testConfig.testDuration || 0) : 0,
         providerType: testConfig.providerType || 'gemini',
+      },
+      // 阈值配置：使用前端传递的值，未传递时使用环境变量默认值
+      thresholds: {
+        successThreshold: testConfig.successThreshold ?? config.stressTest.successThreshold,
+        maxFailures: testConfig.maxFailures ?? config.stressTest.maxConsecutiveFailures,
       },
       startTime: now,
       lastIncrementTime: now,
@@ -365,17 +419,8 @@ class StressTestService {
         ((this.testState.currentMinuteStats.failureCount / minuteTotal) * 100).toFixed(2);
     }
     
-    // 广播总体统计更新
-    this.broadcast({
-      type: 'statsUpdate',
-      data: this.testState,
-    });
-    
-    // 广播当前分钟统计更新（实时请求数）
-    this.broadcast({
-      type: 'currentMinuteStatsUpdate',
-      data: this.testState.currentMinuteStats,
-    });
+    // 使用节流广播，避免频繁发送
+    this.broadcastStatsThrottled();
   }
 
   /**
@@ -388,17 +433,19 @@ class StressTestService {
     
     const stats = this.testState.stats;
     const minuteStats = this.testState.currentMinuteStats;
+    const { successThreshold, maxFailures } = this.testState.thresholds;
     
-    // 条件1: 当前分钟成功率低于阈值
-    if (minuteStats.totalRequests >= 10 && minuteStats.successRate < config.stressTest.successThreshold) {
+    // 条件1: 当前分钟成功率低于阈值（阈值为0时跳过判定）
+    if (successThreshold > 0 && minuteStats.totalRequests >= 10 && 
+        minuteStats.successRate < successThreshold) {
       return {
         overloaded: true,
-        reason: `本分钟成功率(${minuteStats.successRate}%)低于阈值(${config.stressTest.successThreshold}%)`,
+        reason: `本分钟成功率(${minuteStats.successRate}%)低于阈值(${successThreshold}%)`,
       };
     }
     
-    // 条件2: 连续失败次数过多
-    if (stats.consecutiveFailures >= config.stressTest.maxConsecutiveFailures) {
+    // 条件2: 连续失败次数过多（阈值为0时跳过判定）
+    if (maxFailures > 0 && stats.consecutiveFailures >= maxFailures) {
       return {
         overloaded: true,
         reason: `连续失败${stats.consecutiveFailures}次`,
@@ -432,11 +479,29 @@ class StressTestService {
       this.testState.stats.minuteStats.shift();
     }
     
-    log.info('分钟统计', {
+    // 统计错误信息
+    const errorSummary = {};
+    const recentErrors = this.testState.stats.errorLogs.slice(0, 100);
+    recentErrors.forEach(error => {
+      const key = error.statusCode || 'unknown';
+      errorSummary[key] = (errorSummary[key] || 0) + 1;
+    });
+    
+    // 记录分钟统计日志，包含错误摘要
+    const logData = {
       rpm: this.testState.currentRPM,
       requests: this.testState.currentMinuteStats.totalRequests,
+      successCount: this.testState.currentMinuteStats.successCount,
+      failureCount: this.testState.currentMinuteStats.failureCount,
       successRate: this.testState.currentMinuteStats.successRate,
-    });
+    };
+    
+    // 只有在有失败的情况下才添加错误摘要
+    if (this.testState.currentMinuteStats.failureCount > 0) {
+      logData.errorSummary = errorSummary;
+    }
+    
+    log.info('📊 分钟统计', logData);
     
     // 重置当前分钟统计
     const now = Date.now();

@@ -1,6 +1,38 @@
 const { AppError } = require('./errorHandler');
 
 /**
+ * 验证成功率阈值
+ * @param {*} value - 输入值
+ * @returns {{ valid: boolean, error?: string }} - 验证结果
+ */
+const validateSuccessThreshold = (value) => {
+  if (value === undefined || value === null) {
+    return { valid: true };
+  }
+  const threshold = Number(value);
+  if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+    return { valid: false, error: '成功率阈值必须在0-100之间' };
+  }
+  return { valid: true };
+};
+
+/**
+ * 验证最大连续失败次数
+ * @param {*} value - 输入值
+ * @returns {{ valid: boolean, error?: string }} - 验证结果
+ */
+const validateMaxFailures = (value) => {
+  if (value === undefined || value === null) {
+    return { valid: true };
+  }
+  const failures = Number(value);
+  if (isNaN(failures) || failures < 0 || !Number.isInteger(failures)) {
+    return { valid: false, error: '最大连续失败次数必须为非负整数' };
+  }
+  return { valid: true };
+};
+
+/**
  * 验证测试启动参数
  */
 const validateStartTest = (req, res, next) => {
@@ -51,6 +83,23 @@ const validateStartTest = (req, res, next) => {
 
   if (promptMode === 'random' && (!randomPrompts || randomPrompts.length === 0)) {
     throw new AppError('随机模式下请至少添加一条测试语句', 400);
+  }
+
+  // 验证阈值参数（仅自动模式需要）
+  if (mode === 'auto') {
+    const { successThreshold, maxFailures } = req.body;
+
+    // 验证成功率阈值
+    const thresholdResult = validateSuccessThreshold(successThreshold);
+    if (!thresholdResult.valid) {
+      throw new AppError(thresholdResult.error, 400);
+    }
+
+    // 验证最大连续失败次数
+    const failuresResult = validateMaxFailures(maxFailures);
+    if (!failuresResult.valid) {
+      throw new AppError(failuresResult.error, 400);
+    }
   }
 
   next();
@@ -113,6 +162,9 @@ module.exports = {
   validatePagination,
   validateId,
   validateLogin,
+  // 导出纯验证函数用于测试
+  validateSuccessThreshold,
+  validateMaxFailures,
 };
 
 

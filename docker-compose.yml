@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   autoceya:
     # 使用Docker Hub镜像（推荐）
@@ -18,9 +16,9 @@ services:
     environment:
       - PORT=8998
       - AUTH_SECRET=${AUTH_SECRET:-your_secure_password_here}
-      - DEFAULT_SUCCESS_THRESHOLD=80
-      - DEFAULT_MAX_FAILURES=10
-      - DEFAULT_RESPONSE_TIME_THRESHOLD=150000
+      - DEFAULT_SUCCESS_THRESHOLD=${DEFAULT_SUCCESS_THRESHOLD:-75}
+      - DEFAULT_MAX_FAILURES=${DEFAULT_MAX_FAILURES:-20}
+      - DEFAULT_RESPONSE_TIME_THRESHOLD=${DEFAULT_RESPONSE_TIME_THRESHOLD:-150000}
     restart: unless-stopped
     volumes:
       # 持久化数据库文件和日志

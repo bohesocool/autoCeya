@@ -170,11 +170,12 @@ class AIRequestService {
       const result = await this.service.sendRequest(prompt);
       const responseTime = Date.now() - startTime;
 
-      log.debug('AI请求成功', {
-        provider: this.providerType,
-        model: this.service.config.modelName,
-        responseTime,
-      });
+      // 不再记录每个成功请求的日志，减少日志输出
+      // log.debug('AI请求成功', {
+      //   provider: this.providerType,
+      //   model: this.service.config.modelName,
+      //   responseTime,
+      // });
 
       return {
         success: true,
@@ -187,13 +188,14 @@ class AIRequestService {
       
       const errorMessage = error.response?.data?.error?.message || error.message || '未知错误';
       
-      log.warn('AI请求失败', {
-        provider: this.providerType,
-        model: this.service.config.modelName,
-        responseTime,
-        error: errorMessage,
-        statusCode: error.response?.status,
-      });
+      // 不再记录每个失败请求的日志，改为在分钟统计中汇总
+      // log.warn('AI请求失败', {
+      //   provider: this.providerType,
+      //   model: this.service.config.modelName,
+      //   responseTime,
+      //   error: errorMessage,
+      //   statusCode: error.response?.status,
+      // });
 
       return {
         success: false,
