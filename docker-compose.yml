@@ -1,7 +1,7 @@
 services:
   autoceya:
     # 使用Docker Hub镜像（推荐）
-    image: bohesocool/autoceya:latest
+    image: bohesocool/autoceya:v2.0.3
     
     # 或者本地构建（开发用）
     # build: .
