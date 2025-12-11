@@ -45,7 +45,7 @@ const options = {
       },
       {
         name: '历史记录',
-        description: '测试历史记录管理',
+        description: '测试历史记录管理 - 包含查询、删除历史记录以及导出 PDF/Excel 报告功能',
       },
       {
         name: '定时任务',
