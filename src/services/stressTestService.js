@@ -2,6 +2,8 @@ const { AIRequestService } = require('./aiService');
 const config = require('../config');
 const log = require('../utils/logger');
 const db = require('../../database');
+const CircularBuffer = require('../utils/circularBuffer');
+const MemoryMonitor = require('../utils/memoryMonitor');
 
 /**
  * 测压服务类
@@ -21,6 +23,14 @@ class StressTestService {
     this.pendingBroadcast = false; // 节流标志
     this.lastBroadcastTime = 0; // 上次广播时间
     this.broadcastInterval = 200; // 广播间隔（毫秒）
+    
+    // 使用循环缓冲区存储数据，避免内存无限增长
+    this.responseTimes = new CircularBuffer(1000);  // 响应时间缓冲区（容量 1000）
+    this.errorLogs = new CircularBuffer(100);       // 错误日志缓冲区（容量 100）
+    this.requestLogs = new CircularBuffer(500);     // 请求日志缓冲区（容量 500）
+    
+    // 内存监控器
+    this.memoryMonitor = null;
   }
 
   /**
@@ -38,14 +48,12 @@ class StressTestService {
         failureCount: 0,
         errors: {},
         avgResponseTime: 0,
-        responseTimes: [],
+        // responseTimes, errorLogs, requestLogs 已移至循环缓冲区
         successRate: 100,
         failureRate: 0,
         consecutiveFailures: 0,
         rpmHistory: [],
-        errorLogs: [],
         minuteStats: [],
-        requestLogs: [],
       },
       config: {
         url: '',
@@ -150,7 +158,41 @@ class StressTestService {
    * 获取当前状态
    */
   getState() {
-    return this.testState;
+    // 返回状态时，包含循环缓冲区中的数据
+    return {
+      ...this.testState,
+      stats: {
+        ...this.testState.stats,
+        // 从循环缓冲区获取数据
+        responseTimes: this.responseTimes.getAll(),
+        errorLogs: this.errorLogs.getAll().reverse(), // 最新的在前
+        requestLogs: this.requestLogs.getAll().reverse(), // 最新的在前
+      },
+    };
+  }
+
+  /**
+   * 获取内存使用情况
+   * @returns {Object|null} 内存使用统计
+   */
+  getMemoryUsage() {
+    if (this.memoryMonitor) {
+      return this.memoryMonitor.getMemoryUsage();
+    }
+    // 如果没有内存监控器，直接获取内存信息
+    const memUsage = process.memoryUsage();
+    const MB = 1024 * 1024;
+    return {
+      heapUsed: memUsage.heapUsed,
+      heapTotal: memUsage.heapTotal,
+      external: memUsage.external,
+      rss: memUsage.rss,
+      heapUsedMB: Math.round(memUsage.heapUsed / MB * 100) / 100,
+      heapTotalMB: Math.round(memUsage.heapTotal / MB * 100) / 100,
+      rssMB: Math.round(memUsage.rss / MB * 100) / 100,
+      externalMB: Math.round(memUsage.external / MB * 100) / 100,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
@@ -203,6 +245,11 @@ class StressTestService {
       },
     };
 
+    // 清空循环缓冲区
+    this.responseTimes.clear();
+    this.errorLogs.clear();
+    this.requestLogs.clear();
+
     // 创建 AI 服务实例
     this.aiService = new AIRequestService(
       this.testState.config.providerType,
@@ -214,6 +261,15 @@ class StressTestService {
         timeout: config.stressTest.responseTimeThreshold,
       }
     );
+
+    // 启动内存监控
+    const MB = 1024 * 1024;
+    this.memoryMonitor = new MemoryMonitor({
+      warningThreshold: 500 * MB,   // 警告阈值 500MB
+      criticalThreshold: 800 * MB,  // 临界阈值 800MB
+      checkInterval: 30000,         // 每 30 秒检查一次
+    });
+    this.memoryMonitor.start();
 
     log.testStart({
       mode: this.testState.mode,
@@ -238,6 +294,12 @@ class StressTestService {
 
     this.testState.isRunning = false;
     this.clearAllTimers();
+    
+    // 停止内存监控
+    if (this.memoryMonitor) {
+      this.memoryMonitor.stop();
+      this.memoryMonitor = null;
+    }
     
     // 保存测试历史
     this.saveHistory('手动停止', this.testState.mode === 'auto' ? this.testState.currentRPM : null);
@@ -328,7 +390,8 @@ class StressTestService {
     if (result.success) {
       this.testState.stats.successCount++;
       this.testState.stats.consecutiveFailures = 0;
-      this.testState.stats.responseTimes.push(result.responseTime);
+      // 使用循环缓冲区存储响应时间
+      this.responseTimes.push(result.responseTime);
       this.testState.currentMinuteStats.successCount++;
     } else {
       this.testState.stats.failureCount++;
@@ -339,15 +402,12 @@ class StressTestService {
       const errorKey = result.error.substring(0, 100);
       this.testState.stats.errors[errorKey] = (this.testState.stats.errors[errorKey] || 0) + 1;
       
-      // 添加错误日志
-      this.testState.stats.errorLogs.unshift({
+      // 使用循环缓冲区存储错误日志
+      this.errorLogs.push({
         time: new Date().toISOString(),
         message: result.error,
         statusCode: result.status,
       });
-      if (this.testState.stats.errorLogs.length > 100) {
-        this.testState.stats.errorLogs.pop();
-      }
     }
 
     this.testState.stats.totalRequests++;
@@ -359,6 +419,8 @@ class StressTestService {
       responseTime: result.responseTime,
       statusCode: result.status,
       error: result.error || null,
+      requestType: result.requestType,
+      ttfb: result.ttfb,
     });
 
     // 更新统计
@@ -372,7 +434,7 @@ class StressTestService {
    * 添加请求日志
    */
   addRequestLog(logData) {
-    const log = {
+    const logEntry = {
       time: new Date().toISOString(),
       status: logData.status,
       responseTime: logData.responseTime,
@@ -381,17 +443,16 @@ class StressTestService {
       modelName: this.testState.config.modelName,
       provider: this.testState.config.providerType,
       rpm: this.testState.currentRPM,
+      requestType: logData.requestType || this.testState.config.requestType || 'stream',
+      ttfb: logData.ttfb || null, // 首字节时间（仅流式请求）
     };
     
-    this.testState.stats.requestLogs.unshift(log);
-    
-    if (this.testState.stats.requestLogs.length > 500) {
-      this.testState.stats.requestLogs.pop();
-    }
+    // 使用循环缓冲区存储请求日志
+    this.requestLogs.push(logEntry);
     
     this.broadcast({
       type: 'requestLogUpdate',
-      data: log,
+      data: logEntry,
     });
   }
 
@@ -405,9 +466,9 @@ class StressTestService {
       this.testState.stats.failureRate = ((this.testState.stats.failureCount / total) * 100).toFixed(2);
     }
     
-    if (this.testState.stats.responseTimes.length > 0) {
-      const sum = this.testState.stats.responseTimes.reduce((a, b) => a + b, 0);
-      this.testState.stats.avgResponseTime = Math.round(sum / this.testState.stats.responseTimes.length);
+    // 使用循环缓冲区的 getAverage 方法计算平均响应时间
+    if (this.responseTimes.count > 0) {
+      this.testState.stats.avgResponseTime = Math.round(this.responseTimes.getAverage());
     }
 
     // 更新当前分钟统计
@@ -452,8 +513,8 @@ class StressTestService {
       };
     }
     
-    // 条件3: 平均响应时间过长
-    if (stats.responseTimes.length >= 10 && stats.avgResponseTime > config.stressTest.responseTimeThreshold) {
+    // 条件3: 平均响应时间过长（使用循环缓冲区的 count 属性）
+    if (this.responseTimes.count >= 10 && stats.avgResponseTime > config.stressTest.responseTimeThreshold) {
       return {
         overloaded: true,
         reason: `平均响应时间(${stats.avgResponseTime}ms)超过阈值`,
@@ -479,9 +540,9 @@ class StressTestService {
       this.testState.stats.minuteStats.shift();
     }
     
-    // 统计错误信息
+    // 统计错误信息（使用循环缓冲区获取错误日志）
     const errorSummary = {};
-    const recentErrors = this.testState.stats.errorLogs.slice(0, 100);
+    const recentErrors = this.errorLogs.getAll();
     recentErrors.forEach(error => {
       const key = error.statusCode || 'unknown';
       errorSummary[key] = (errorSummary[key] || 0) + 1;

@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoCeya - 定时任务管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #219a52;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d68910;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 30px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 20px;
+            color: #667eea;
+        }
+
+        .schedule-list {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .list-header {
+            padding: 25px 30px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .list-header h2 {
+            font-size: 18px;
+            color: #667eea;
+        }
+
+        .schedule-item {
+            padding: 20px 30px;
+            border-bottom: 1px solid #f0f0f0;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 180px;
+            gap: 20px;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .schedule-item:hover {
+            background: #f8f9fa;
+        }
+
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .item-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .item-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .item-value.primary {
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-enabled {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-disabled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .type-once {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .type-recurring {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #667eea;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .mode-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .mode-option.active {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+
+        .mode-option:hover {
+            border-color: #667eea;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 25px 0 15px 0;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading::before {
+            content: "⏳";
+            display: inline-block;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 1200px) {
+            .schedule-item {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .item-section {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>⏰ 定时任务管理</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="goBack()">返回控制台</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h2 class="page-title">定时任务列表</h2>
+            <button class="btn btn-primary" onclick="openCreateModal()">➕ 创建任务</button>
+        </div>
+
+        <!-- 提示信息 -->
+        <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+            <div style="font-size: 14px; color: #555;">
+                <strong style="color: #667eea;">💡 提示：</strong>
+                <span>定时任务可以在指定时间自动执行压力测试。支持一次性执行和重复执行（Cron 表达式）两种模式。</span>
+            </div>
+        </div>
+
+        <!-- 任务列表 -->
+        <div class="schedule-list">
+            <div class="list-header">
+                <h2>任务列表</h2>
+            </div>
+            <div id="scheduleContainer">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建/编辑任务模态框 -->
+    <div class="modal" id="scheduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">创建定时任务</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleForm">
+                    <input type="hidden" id="scheduleId">
+                    
+                    <div class="form-group">
+                        <label>任务名称 *</label>
+                        <input type="text" id="scheduleName" placeholder="输入任务名称" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>任务描述</label>
+                        <textarea id="scheduleDescription" placeholder="输入任务描述（可选）"></textarea>
+                    </div>
+
+                    <h3 class="section-title">⏰ 调度配置</h3>
+                    
+                    <div class="mode-selector" id="scheduleTypeSelector">
+                        <div class="mode-option active" data-type="once">
+                            <div style="font-size: 18px; margin-bottom: 5px;">📅 一次性执行</div>
+                            <div style="font-size: 13px; color: #666;">在指定时间执行一次</div>
+                        </div>
+                        <div class="mode-option" data-type="recurring">
+                            <div style="font-size: 18px; margin-bottom: 5px;">🔄 重复执行</div>
+                            <div style="font-size: 13px; color: #666;">按 Cron 表达式周期执行</div>
+                        </div>
+                    </div>
+
+                    <div id="onceConfig">
+                        <div class="form-group">
+                            <label>执行时间 *</label>
+                            <input type="datetime-local" id="runAt" required>
+                            <small>选择任务执行的具体时间</small>
+                        </div>
+                    </div>
+
+                    <div id="recurringConfig" style="display: none;">
+                        <div class="form-group">
+                            <label>Cron 表达式 *</label>
+                            <input type="text" id="cronExpression" placeholder="例如: */5 * * * * (每5分钟)">
+                            <small>
+                                格式: 分 时 日 月 周 | 
+                                示例: <code>0 9 * * *</code> (每天9点), 
+                                <code>*/30 * * * *</code> (每30分钟), 
+                                <code>0 0 * * 1</code> (每周一0点)
+                            </small>
+                        </div>
+                    </div>
+
+                    <h3 class="section-title">🔧 测试配置</h3>
+
+                    <div class="form-group">
+                        <label>AI 提供商 *</label>
+                        <select id="providerType">
+                            <option value="gemini">Gemini (Google)</option>
+                            <option value="openai">OpenAI (GPT)</option>
+                            <option value="claude">Claude (Anthropic)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>测试站点 URL *</label>
+                            <input type="text" id="testUrl" placeholder="https://api.example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>模型名称 *</label>
+                            <input type="text" id="modelName" placeholder="gemini-1.5-flash" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>API 密钥 *</label>
+                        <input type="password" id="apiKey" placeholder="your-api-key" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>请求类型</label>
+                            <select id="requestType">
+                                <option value="stream">流式请求</option>
+                                <option value="non-stream">非流式请求</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>测压模式</label>
+                            <select id="testMode">
+                                <option value="fixed">固定测压</option>
+                                <option value="auto">自动测压</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>目标 RPM</label>
+                            <input type="number" id="rpm" value="60" min="1" max="100000">
+                        </div>
+                        <div class="form-group">
+                            <label>测试时长（分钟）</label>
+                            <input type="number" id="testDuration" value="5" min="1" max="1440">
+                            <small>建议设置合理的测试时长</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>测试语句</label>
+                        <textarea id="testPrompt" placeholder="输入测试语句">请简单介绍一下人工智能的发展历程</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveSchedule()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentScheduleType = 'once';
+        let editingScheduleId = null;
+
+        // 验证登录
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        // 初始化
+        window.addEventListener('load', () => {
+            loadSchedules();
+            initScheduleTypeSelector();
+            setDefaultRunAt();
+        });
+
+        // 设置默认执行时间（当前时间 + 1小时）
+        function setDefaultRunAt() {
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            now.setMinutes(0);
+            now.setSeconds(0);
+            const localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+            document.getElementById('runAt').value = localISOTime;
+        }
+
+        // 初始化调度类型选择器
+        function initScheduleTypeSelector() {
+            const options = document.querySelectorAll('#scheduleTypeSelector .mode-option');
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    options.forEach(o => o.classList.remove('active'));
+                    option.classList.add('active');
+                    currentScheduleType = option.dataset.type;
+                    updateScheduleTypeUI();
+                });
+            });
+        }
+
+        // 更新调度类型 UI
+        function updateScheduleTypeUI() {
+            const onceConfig = document.getElementById('onceConfig');
+            const recurringConfig = document.getElementById('recurringConfig');
+            
+            if (currentScheduleType === 'once') {
+                onceConfig.style.display = 'block';
+                recurringConfig.style.display = 'none';
+            } else {
+                onceConfig.style.display = 'none';
+                recurringConfig.style.display = 'block';
+            }
+        }
+
+        // 加载定时任务列表
+        async function loadSchedules() {
+            try {
+                const response = await fetch('/api/schedules', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载失败');
+                }
+
+                const result = await response.json();
+                renderSchedules(result.data);
+            } catch (error) {
+                document.getElementById('scheduleContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <div>加载失败: ${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染任务列表
+        function renderSchedules(schedules) {
+            const container = document.getElementById('scheduleContainer');
+            
+            if (!schedules || schedules.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>暂无定时任务</div>
+                        <div style="margin-top: 10px; color: #999; font-size: 14px;">点击"创建任务"按钮添加新的定时任务</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = schedules.map(schedule => {
+                const statusClass = schedule.enabled ? 'status-enabled' : 'status-disabled';
+                const statusText = schedule.enabled ? '已启用' : '已禁用';
+                const typeClass = schedule.schedule_type === 'once' ? 'type-once' : 'type-recurring';
+                const typeText = schedule.schedule_type === 'once' ? '一次性' : '重复执行';
+                
+                // 解析测试配置
+                let testConfig = {};
+                try {
+                    testConfig = typeof schedule.test_config === 'string' 
+                        ? JSON.parse(schedule.test_config) 
+                        : schedule.test_config;
+                } catch (e) {
+                    testConfig = {};
+                }
+
+                const nextRunText = schedule.next_run_at 
+                    ? formatDateTime(new Date(schedule.next_run_at))
+                    : '-';
+                const lastRunText = schedule.last_run_at 
+                    ? formatDateTime(new Date(schedule.last_run_at))
+                    : '从未执行';
+
+                return `
+                    <div class="schedule-item">
+                        <div class="item-section">
+                            <span class="item-label">任务名称</span>
+                            <span class="item-value primary">${escapeHtml(schedule.name)}</span>
+                            <div style="margin-top: 5px;">
+                                <span class="type-badge ${typeClass}">${typeText}</span>
+                                <span class="status-badge ${statusClass}" style="margin-left: 5px;">${statusText}</span>
+                            </div>
+                        </div>
+                        <div class="item-section">
+                            <span class="item-label">调度配置</span>
+                            <span class="item-value">${schedule.schedule_type === 'once' 
+                                ? formatDateTime(new Date(schedule.run_at))
+                                : schedule.cron_expression}</span>
+                        </div>
+                        <div class="item-section">
+                            <span class="item-label">下次执行</span>
+                            <span class="item-value">${nextRunText}</span>
+                        </div>
+                        <div class="item-section">
+                            <span class="item-label">上次执行</span>
+                            <span class="item-value">${lastRunText}</span>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="action-btn ${schedule.enabled ? 'btn-warning' : 'btn-success'}" 
+                                    onclick="toggleSchedule(${schedule.id})">
+                                ${schedule.enabled ? '禁用' : '启用'}
+                            </button>
+                            <button class="action-btn btn-primary" onclick="editSchedule(${schedule.id})">编辑</button>
+                            <button class="action-btn btn-danger" onclick="deleteSchedule(${schedule.id})">删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 打开创建模态框
+        function openCreateModal() {
+            editingScheduleId = null;
+            document.getElementById('modalTitle').textContent = '创建定时任务';
+            document.getElementById('scheduleForm').reset();
+            setDefaultRunAt();
+            
+            // 重置调度类型
+            currentScheduleType = 'once';
+            const options = document.querySelectorAll('#scheduleTypeSelector .mode-option');
+            options.forEach(o => o.classList.remove('active'));
+            options[0].classList.add('active');
+            updateScheduleTypeUI();
+            
+            document.getElementById('scheduleModal').classList.add('active');
+        }
+
+        // 编辑任务
+        async function editSchedule(id) {
+            try {
+                const response = await fetch(`/api/schedules/${id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('获取任务详情失败');
+                }
+
+                const result = await response.json();
+                const schedule = result.data;
+                
+                editingScheduleId = id;
+                document.getElementById('modalTitle').textContent = '编辑定时任务';
+                
+                // 填充表单
+                document.getElementById('scheduleName').value = schedule.name;
+                document.getElementById('scheduleDescription').value = schedule.description || '';
+                
+                // 设置调度类型
+                currentScheduleType = schedule.schedule_type;
+                const options = document.querySelectorAll('#scheduleTypeSelector .mode-option');
+                options.forEach(o => {
+                    o.classList.remove('active');
+                    if (o.dataset.type === currentScheduleType) {
+                        o.classList.add('active');
+                    }
+                });
+                updateScheduleTypeUI();
+
+                if (schedule.schedule_type === 'once' && schedule.run_at) {
+                    const runAt = new Date(schedule.run_at);
+                    const localISOTime = new Date(runAt.getTime() - runAt.getTimezoneOffset() * 60000)
+                        .toISOString()
+                        .slice(0, 16);
+                    document.getElementById('runAt').value = localISOTime;
+                }
+                
+                if (schedule.schedule_type === 'recurring') {
+                    document.getElementById('cronExpression').value = schedule.cron_expression || '';
+                }
+                
+                // 填充测试配置
+                let testConfig = {};
+                try {
+                    testConfig = typeof schedule.test_config === 'string' 
+                        ? JSON.parse(schedule.test_config) 
+                        : schedule.test_config;
+                } catch (e) {
+                    testConfig = {};
+                }
+                
+                document.getElementById('providerType').value = testConfig.providerType || 'gemini';
+                document.getElementById('testUrl').value = testConfig.url || '';
+                document.getElementById('modelName').value = testConfig.modelName || '';
+                document.getElementById('apiKey').value = testConfig.apiKey || '';
+                document.getElementById('requestType').value = testConfig.requestType || 'stream';
+                document.getElementById('testMode').value = testConfig.mode || 'fixed';
+                document.getElementById('rpm').value = testConfig.rpm || 60;
+                document.getElementById('testDuration').value = testConfig.testDuration || 5;
+                document.getElementById('testPrompt').value = testConfig.testPrompt || '';
+                
+                document.getElementById('scheduleModal').classList.add('active');
+            } catch (error) {
+                alert('获取任务详情失败: ' + error.message);
+            }
+        }
+
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('scheduleModal').classList.remove('active');
+            editingScheduleId = null;
+        }
+
+        // 保存任务
+        async function saveSchedule() {
+            const name = document.getElementById('scheduleName').value.trim();
+            const description = document.getElementById('scheduleDescription').value.trim();
+            
+            if (!name) {
+                alert('请输入任务名称');
+                return;
+            }
+
+            // 构建调度配置
+            let scheduleConfig = {
+                name,
+                description,
+                scheduleType: currentScheduleType,
+            };
+
+            if (currentScheduleType === 'once') {
+                const runAt = document.getElementById('runAt').value;
+                if (!runAt) {
+                    alert('请选择执行时间');
+                    return;
+                }
+                scheduleConfig.runAt = new Date(runAt).toISOString();
+            } else {
+                const cronExpression = document.getElementById('cronExpression').value.trim();
+                if (!cronExpression) {
+                    alert('请输入 Cron 表达式');
+                    return;
+                }
+                scheduleConfig.cronExpression = cronExpression;
+            }
+
+            // 构建测试配置
+            const testUrl = document.getElementById('testUrl').value.trim();
+            const modelName = document.getElementById('modelName').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+
+            if (!testUrl || !modelName || !apiKey) {
+                alert('请填写完整的测试配置（URL、模型名称、API密钥）');
+                return;
+            }
+
+            scheduleConfig.testConfig = {
+                url: testUrl,
+                modelName,
+                apiKey,
+                providerType: document.getElementById('providerType').value,
+                requestType: document.getElementById('requestType').value,
+                mode: document.getElementById('testMode').value,
+                rpm: parseInt(document.getElementById('rpm').value) || 60,
+                testDuration: parseInt(document.getElementById('testDuration').value) || 5,
+                testPrompt: document.getElementById('testPrompt').value.trim() || '请简单介绍一下人工智能',
+            };
+
+            try {
+                const url = editingScheduleId 
+                    ? `/api/schedules/${editingScheduleId}` 
+                    : '/api/schedules';
+                const method = editingScheduleId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(scheduleConfig)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || '保存失败');
+                }
+
+                closeModal();
+                loadSchedules();
+                alert(editingScheduleId ? '任务更新成功' : '任务创建成功');
+            } catch (error) {
+                alert('保存失败: ' + error.message);
+            }
+        }
+
+        // 切换任务状态
+        async function toggleSchedule(id) {
+            try {
+                const response = await fetch(`/api/schedules/${id}/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || '操作失败');
+                }
+
+                loadSchedules();
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        // 删除任务
+        async function deleteSchedule(id) {
+            if (!confirm('确定要删除这个定时任务吗？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/schedules/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || '删除失败');
+                }
+
+                loadSchedules();
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 格式化日期时间
+        function formatDateTime(date) {
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 返回控制台
+        function goBack() {
+            window.location.href = '/dashboard';
+        }
+
+        // 点击模态框外部关闭
+        document.getElementById('scheduleModal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                closeModal();
+            }
+        });
+    </script>
+
+    <!-- 版本号 -->
+    <footer style="text-align: center; padding: 20px; color: #999; font-size: 12px; margin-top: 30px;">
+        AutoCeya v2.0.4 | AI 压力测试工具
+    </footer>
+</body>
+</html>

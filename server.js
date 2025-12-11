@@ -5,6 +5,7 @@ const path = require('path');
 const axios = require('axios');
 const config = require('./config');
 const db = require('./database');
+const parallelTestService = require('./src/services/parallelTestService');
 
 const app = express();
 const server = http.createServer(app);
@@ -75,6 +76,9 @@ wss.on('connection', (ws) => {
   clients.add(ws);
   console.log('新客户端连接');
   
+  // 添加到并行测试服务的客户端列表
+  parallelTestService.addClient(ws);
+  
   // 发送当前状态
   ws.send(JSON.stringify({
     type: 'stateUpdate',
@@ -83,6 +87,8 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     clients.delete(ws);
+    // 从并行测试服务移除客户端
+    parallelTestService.removeClient(ws);
     console.log('客户端断开连接');
   });
 });
@@ -786,6 +792,14 @@ app.get('/dashboard', (req, res) => {
 
 app.get('/history', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
+
+app.get('/schedule', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'schedule.html'));
+});
+
+app.get('/parallel', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'parallel.html'));
 });
 
 app.get('/detail', (req, res) => {

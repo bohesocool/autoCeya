@@ -47,6 +47,14 @@ const options = {
         name: '历史记录',
         description: '测试历史记录管理',
       },
+      {
+        name: '定时任务',
+        description: '定时任务管理接口 - 支持创建、查询、更新、删除和切换定时测试任务',
+      },
+      {
+        name: '并行测试',
+        description: '并行测试管理接口 - 支持同时测试多个 API 端点进行性能对比',
+      },
     ],
   },
   apis: [

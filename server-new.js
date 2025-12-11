@@ -6,6 +6,11 @@ const config = require('./src/config');
 const log = require('./src/utils/logger');
 const setupSwagger = require('./src/swagger');
 const stressTestService = require('./src/services/stressTestService');
+const parallelTestService = require('./src/services/parallelTestService');
+const MemoryMonitor = require('./src/utils/memoryMonitor');
+
+// 创建内存监控实例（用于 /metrics 端点）
+const memoryMonitor = new MemoryMonitor();
 
 // 导入中间件
 const corsMiddleware = require('./src/middlewares/cors');
@@ -82,6 +87,14 @@ app.get('/history', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'history.html'));
 });
 
+app.get('/schedule', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'schedule.html'));
+});
+
+app.get('/parallel', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'parallel.html'));
+});
+
 app.get('/detail', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'detail.html'));
 });
@@ -99,13 +112,28 @@ app.get('/health', (req, res) => {
 // 系统信息端点
 app.get('/metrics', (req, res) => {
   const state = stressTestService.getState();
+  const memoryUsage = memoryMonitor.getMemoryUsage();
+  
   res.json({
     isRunning: state.isRunning,
     totalRequests: state.stats.totalRequests,
     successRate: state.stats.successRate,
     currentRPM: state.currentRPM,
     uptime: process.uptime(),
-    memory: process.memoryUsage(),
+    memory: {
+      // 原始字节值
+      heapUsed: memoryUsage?.heapUsed || 0,
+      heapTotal: memoryUsage?.heapTotal || 0,
+      rss: memoryUsage?.rss || 0,
+      external: memoryUsage?.external || 0,
+      // MB 格式（便于阅读）
+      heapUsedMB: memoryUsage?.heapUsedMB || 0,
+      heapTotalMB: memoryUsage?.heapTotalMB || 0,
+      rssMB: memoryUsage?.rssMB || 0,
+      externalMB: memoryUsage?.externalMB || 0,
+      // 时间戳
+      timestamp: memoryUsage?.timestamp || new Date().toISOString()
+    }
   });
 });
 
@@ -119,6 +147,7 @@ wss.on('connection', (ws, req) => {
   
   // 添加客户端到服务
   stressTestService.addClient(ws);
+  parallelTestService.addClient(ws);
   
   // 发送当前状态
   try {
@@ -164,6 +193,7 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     clearInterval(heartbeatInterval);
     stressTestService.removeClient(ws);
+    parallelTestService.removeClient(ws);
     log.info('WebSocket连接关闭', { ip: clientIp });
   });
 

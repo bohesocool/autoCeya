@@ -482,6 +482,8 @@
         <div class="header-content">
             <h1>🚀 AutoCeya - 测压控制台</h1>
             <div style="display: flex; gap: 15px;">
+                <button class="logout-btn" onclick="viewSchedules()">⏰ 定时任务</button>
+                <button class="logout-btn" onclick="viewParallel()">🔀 并行测试</button>
                 <button class="logout-btn" onclick="viewHistory()">📊 历史记录</button>
                 <button class="logout-btn" onclick="logout()">退出登录</button>
             </div>
@@ -1539,6 +1541,16 @@
             console.log(`[${type.toUpperCase()}] ${message}`);
         }
 
+        // 查看定时任务
+        function viewSchedules() {
+            window.location.href = '/schedule';
+        }
+
+        // 查看并行测试
+        function viewParallel() {
+            window.location.href = '/parallel';
+        }
+
         // 查看历史记录
         function viewHistory() {
             window.location.href = '/history';
@@ -1675,5 +1687,10 @@
             }
         }
     </script>
+
+    <!-- 版本号 -->
+    <footer style="text-align: center; padding: 20px; color: #999; font-size: 12px; margin-top: 30px;">
+        AutoCeya v2.0.4 | AI 压力测试工具
+    </footer>
 </body>
 </html>

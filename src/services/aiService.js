@@ -1,5 +1,6 @@
 const axios = require('axios');
 const log = require('../utils/logger');
+const SSEParser = require('../utils/sseParser');
 
 /**
  * AI 服务基类
@@ -21,13 +22,18 @@ class GeminiService extends AIServiceBase {
   async sendRequest(prompt) {
     const { url, modelName, apiKey, requestType } = this.config;
     
-    const endpoint = requestType === 'stream' ? 'streamGenerateContent' : 'generateContent';
-    const fullUrl = requestType === 'stream'
-      ? `${url}/v1beta/models/${modelName}:${endpoint}?key=${apiKey}&alt=sse`
-      : `${url}/v1beta/models/${modelName}:${endpoint}?key=${apiKey}`;
+    if (requestType === 'stream') {
+      const fullUrl = `${url}/v1beta/models/${modelName}:streamGenerateContent?key=${apiKey}&alt=sse`;
+      return this.sendStreamRequest(fullUrl, prompt);
+    } else {
+      const fullUrl = `${url}/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      return this.sendNonStreamRequest(fullUrl, prompt);
+    }
+  }
 
+  async sendNonStreamRequest(url, prompt) {
     const response = await axios.post(
-      fullUrl,
+      url,
       {
         contents: [
           {
@@ -44,11 +50,70 @@ class GeminiService extends AIServiceBase {
       }
     );
 
+    // 提取文本内容
+    const content = SSEParser.extractNonStreamContent(response.data, 'gemini');
+
     return {
       success: true,
       data: response.data,
+      content,
       status: response.status,
     };
+  }
+
+  async sendStreamRequest(url, prompt) {
+    return new Promise((resolve, reject) => {
+      let fullContent = '';
+      let firstByteTime = null;
+      const startTime = Date.now();
+
+      axios.post(
+        url,
+        {
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: prompt }],
+            },
+          ],
+        },
+        {
+          timeout: this.config.timeout || 150000,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          responseType: 'stream',
+        }
+      )
+      .then((response) => {
+        SSEParser.parseStream(
+          response.data,
+          (data) => {
+            if (!firstByteTime) {
+              firstByteTime = Date.now();
+            }
+            const content = SSEParser.extractContent(data, 'gemini');
+            if (content) {
+              fullContent += content;
+            }
+          },
+          () => {
+            resolve({
+              success: true,
+              content: fullContent,
+              status: response.status,
+              ttfb: firstByteTime ? firstByteTime - startTime : null,
+            });
+          },
+          (error) => {
+            reject(error);
+          }
+        );
+      })
+      .catch((error) => {
+        reject(error);
+      });
+    });
   }
 }
 
@@ -58,8 +123,6 @@ class GeminiService extends AIServiceBase {
 class OpenAIService extends AIServiceBase {
   async sendRequest(prompt) {
     const { url, modelName, apiKey, requestType } = this.config;
-    
-    // OpenAI API 端点
     const fullUrl = `${url}/v1/chat/completions`;
 
     const requestBody = {
@@ -73,23 +136,76 @@ class OpenAIService extends AIServiceBase {
       stream: requestType === 'stream',
     };
 
-    const response = await axios.post(fullUrl, requestBody, {
+    if (requestType === 'stream') {
+      return this.sendStreamRequest(fullUrl, requestBody, apiKey);
+    } else {
+      return this.sendNonStreamRequest(fullUrl, requestBody, apiKey);
+    }
+  }
+
+  async sendNonStreamRequest(url, body, apiKey) {
+    const response = await axios.post(url, body, {
       timeout: this.config.timeout || 150000,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      // 如果是流式请求，需要特殊处理
-      ...(requestType === 'stream' && {
-        responseType: 'stream',
-      }),
     });
+
+    // 提取文本内容
+    const content = SSEParser.extractNonStreamContent(response.data, 'openai');
 
     return {
       success: true,
       data: response.data,
+      content,
       status: response.status,
     };
+  }
+
+  async sendStreamRequest(url, body, apiKey) {
+    return new Promise((resolve, reject) => {
+      let fullContent = '';
+      let firstByteTime = null;
+      const startTime = Date.now();
+
+      axios.post(url, body, {
+        timeout: this.config.timeout || 150000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        responseType: 'stream',
+      })
+      .then((response) => {
+        SSEParser.parseStream(
+          response.data,
+          (data) => {
+            if (!firstByteTime) {
+              firstByteTime = Date.now();
+            }
+            const content = SSEParser.extractContent(data, 'openai');
+            if (content) {
+              fullContent += content;
+            }
+          },
+          () => {
+            resolve({
+              success: true,
+              content: fullContent,
+              status: response.status,
+              ttfb: firstByteTime ? firstByteTime - startTime : null,
+            });
+          },
+          (error) => {
+            reject(error);
+          }
+        );
+      })
+      .catch((error) => {
+        reject(error);
+      });
+    });
   }
 }
 
@@ -99,8 +215,6 @@ class OpenAIService extends AIServiceBase {
 class ClaudeService extends AIServiceBase {
   async sendRequest(prompt) {
     const { url, modelName, apiKey, requestType } = this.config;
-    
-    // Claude API 端点
     const fullUrl = `${url}/v1/messages`;
 
     const requestBody = {
@@ -115,24 +229,79 @@ class ClaudeService extends AIServiceBase {
       stream: requestType === 'stream',
     };
 
-    const response = await axios.post(fullUrl, requestBody, {
+    if (requestType === 'stream') {
+      return this.sendStreamRequest(fullUrl, requestBody, apiKey);
+    } else {
+      return this.sendNonStreamRequest(fullUrl, requestBody, apiKey);
+    }
+  }
+
+  async sendNonStreamRequest(url, body, apiKey) {
+    const response = await axios.post(url, body, {
       timeout: this.config.timeout || 150000,
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01', // Claude 需要指定 API 版本
+        'anthropic-version': '2023-06-01',
       },
-      // 如果是流式请求，需要特殊处理
-      ...(requestType === 'stream' && {
-        responseType: 'stream',
-      }),
     });
+
+    // 提取文本内容
+    const content = SSEParser.extractNonStreamContent(response.data, 'claude');
 
     return {
       success: true,
       data: response.data,
+      content,
       status: response.status,
     };
+  }
+
+  async sendStreamRequest(url, body, apiKey) {
+    return new Promise((resolve, reject) => {
+      let fullContent = '';
+      let firstByteTime = null;
+      const startTime = Date.now();
+
+      axios.post(url, body, {
+        timeout: this.config.timeout || 150000,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        responseType: 'stream',
+      })
+      .then((response) => {
+        SSEParser.parseStream(
+          response.data,
+          (data) => {
+            if (!firstByteTime) {
+              firstByteTime = Date.now();
+            }
+            // Claude 使用 delta.text
+            const content = SSEParser.extractContent(data, 'claude');
+            if (content) {
+              fullContent += content;
+            }
+          },
+          () => {
+            resolve({
+              success: true,
+              content: fullContent,
+              status: response.status,
+              ttfb: firstByteTime ? firstByteTime - startTime : null,
+            });
+          },
+          (error) => {
+            reject(error);
+          }
+        );
+      })
+      .catch((error) => {
+        reject(error);
+      });
+    });
   }
 }
 
@@ -161,6 +330,7 @@ class AIRequestService {
   constructor(providerType, config) {
     this.service = AIServiceFactory.create(providerType, config);
     this.providerType = providerType;
+    this.requestType = config.requestType || 'non-stream';
   }
 
   async execute(prompt) {
@@ -175,18 +345,51 @@ class AIRequestService {
       //   provider: this.providerType,
       //   model: this.service.config.modelName,
       //   responseTime,
+      //   requestType: this.requestType,
+      //   ttfb: result.ttfb,
       // });
 
       return {
         success: true,
         responseTime,
         status: result.status,
+        content: result.content,
         data: result.data,
+        requestType: this.requestType,
+        ttfb: result.ttfb || null,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
       
-      const errorMessage = error.response?.data?.error?.message || error.message || '未知错误';
+      // 增强错误消息提取
+      let errorMessage = '未知错误';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = '请求超时';
+      } else if (error.code === 'ENOTFOUND') {
+        errorMessage = '域名解析失败';
+      } else if (error.code === 'ECONNREFUSED') {
+        errorMessage = '连接被拒绝';
+      } else if (error.response) {
+        // API 返回了错误响应
+        const status = error.response.status;
+        if (status >= 400 && status < 500) {
+          // 4xx 错误：客户端错误
+          errorMessage = error.response.data?.error?.message || 
+                        error.response.data?.message || 
+                        `客户端错误 (${status})`;
+          
+          if (status === 401 || status === 403) {
+            errorMessage = 'API 密钥无效或权限不足';
+          }
+        } else if (status >= 500) {
+          // 5xx 错误：服务器错误
+          errorMessage = error.response.data?.error?.message || 
+                        `服务器错误 (${status})`;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       
       // 不再记录每个失败请求的日志，改为在分钟统计中汇总
       // log.warn('AI请求失败', {
@@ -195,6 +398,7 @@ class AIRequestService {
       //   responseTime,
       //   error: errorMessage,
       //   statusCode: error.response?.status,
+      //   requestType: this.requestType,
       // });
 
       return {
@@ -202,6 +406,7 @@ class AIRequestService {
         responseTime,
         status: error.response?.status,
         error: errorMessage,
+        requestType: this.requestType,
       };
     }
   }
