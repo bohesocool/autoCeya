@@ -1,6 +1,6 @@
 {
   "name": "autoceya",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "AI模型自动测压系统 - 支持 Gemini、OpenAI、Claude 多模型压力测试",
   "main": "server-new.js",
   "scripts": {
@@ -32,7 +32,7 @@
     "pdfkit": "^0.17.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
-    "uuid": "^13.0.0",
+    "uuid": "^9.0.0",
     "winston": "^3.11.0",
     "ws": "^8.14.2"
   },
