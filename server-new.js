@@ -99,6 +99,15 @@ app.get('/detail', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'detail.html'));
 });
 
+// 版本号端点（用于前端动态获取）
+const packageJson = require('./package.json');
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: packageJson.version,
+    name: packageJson.name,
+  });
+});
+
 // 健康检查端点
 app.get('/health', (req, res) => {
   res.json({
@@ -106,6 +115,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: config.nodeEnv,
+    version: packageJson.version,
   });
 });
 
@@ -219,7 +229,7 @@ app.use(errorHandler);
 server.listen(config.port, () => {
   log.info(`
 ╔════════════════════════════════════════════╗
-║   自动测压系统 - AutoCeya v2.0             ║
+║   自动测压系统 - AutoCeya v${packageJson.version}            ║
 ║   AI模型压力测试工具（重构版）              ║
 ╚════════════════════════════════════════════╝
 

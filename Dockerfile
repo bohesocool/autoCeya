@@ -11,8 +11,8 @@ WORKDIR /app
 # 复制依赖文件
 COPY package*.json ./
 
-# 安装所有依赖（包括devDependencies用于构建）
-RUN npm ci --production
+# 安装生产依赖
+RUN npm ci --omit=dev
 
 # ===================================
 # 多阶段构建 - 运行阶段
