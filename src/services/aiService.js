@@ -3,6 +3,53 @@ const log = require('../utils/logger');
 const SSEParser = require('../utils/sseParser');
 
 /**
+ * 从错误对象中提取详细的错误消息
+ * @param {Error} error - 错误对象
+ * @returns {string} 提取的错误消息
+ */
+function extractErrorMessage(error) {
+  // 网络错误优先处理
+  if (error.code === 'ECONNABORTED') return '请求超时';
+  if (error.code === 'ENOTFOUND') return '域名解析失败';
+  if (error.code === 'ECONNREFUSED') return '连接被拒绝';
+  
+  // API 响应错误
+  if (error.response) {
+    const status = error.response.status;
+    const data = error.response.data;
+    
+    // 按优先级尝试提取错误消息
+    const message = 
+      data?.error?.message ||      // OpenAI 格式
+      data?.message ||              // 通用格式
+      data?.error ||                // 简单错误字符串
+      data?.detail ||               // FastAPI 格式
+      data?.msg;                    // 其他格式
+    
+    if (message) {
+      return typeof message === 'string' ? message : JSON.stringify(message);
+    }
+    
+    // 如果没有标准错误字段,尝试提取响应体的关键信息
+    if (data && typeof data === 'object') {
+      const keys = Object.keys(data);
+      if (keys.length > 0) {
+        // 返回第一个有意义的字段值
+        const firstKey = keys[0];
+        const value = data[firstKey];
+        return `${firstKey}: ${typeof value === 'string' ? value : JSON.stringify(value)}`;
+      }
+    }
+    
+    // 最后回退: 状态码 + 状态文本
+    return `HTTP ${status}: ${error.response.statusText || '未知错误'}`;
+  }
+  
+  // 其他错误
+  return error.message || '未知错误';
+}
+
+/**
  * AI 服务基类
  */
 class AIServiceBase {
@@ -361,35 +408,8 @@ class AIRequestService {
     } catch (error) {
       const responseTime = Date.now() - startTime;
       
-      // 增强错误消息提取
-      let errorMessage = '未知错误';
-      
-      if (error.code === 'ECONNABORTED') {
-        errorMessage = '请求超时';
-      } else if (error.code === 'ENOTFOUND') {
-        errorMessage = '域名解析失败';
-      } else if (error.code === 'ECONNREFUSED') {
-        errorMessage = '连接被拒绝';
-      } else if (error.response) {
-        // API 返回了错误响应
-        const status = error.response.status;
-        if (status >= 400 && status < 500) {
-          // 4xx 错误：客户端错误
-          errorMessage = error.response.data?.error?.message || 
-                        error.response.data?.message || 
-                        `客户端错误 (${status})`;
-          
-          if (status === 401 || status === 403) {
-            errorMessage = 'API 密钥无效或权限不足';
-          }
-        } else if (status >= 500) {
-          // 5xx 错误：服务器错误
-          errorMessage = error.response.data?.error?.message || 
-                        `服务器错误 (${status})`;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+      // 使用统一的错误消息提取函数
+      const errorMessage = extractErrorMessage(error);
       
       // 不再记录每个失败请求的日志，改为在分钟统计中汇总
       // log.warn('AI请求失败', {
@@ -418,6 +438,7 @@ module.exports = {
   GeminiService,
   OpenAIService,
   ClaudeService,
+  extractErrorMessage,
 };
 
 

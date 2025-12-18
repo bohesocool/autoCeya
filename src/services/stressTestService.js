@@ -141,10 +141,10 @@ class StressTestService {
     this.pendingBroadcast = false;
     this.lastBroadcastTime = Date.now();
     
-    // 广播总体统计更新
+    // 广播总体统计更新（使用 getState() 确保包含 CircularBuffer 数据）
     this.broadcast({
       type: 'statsUpdate',
-      data: this.testState,
+      data: this.getState(),
     });
     
     // 广播当前分钟统计更新（实时请求数）
@@ -701,6 +701,16 @@ class StressTestService {
     } catch (error) {
       log.error('保存测试历史失败', { error: error.message });
     }
+  }
+
+  /**
+   * 清除请求日志
+   */
+  clearRequestLogs() {
+    this.requestLogs.clear();
+    this.broadcast({
+      type: 'logsCleared',
+    });
   }
 }
 

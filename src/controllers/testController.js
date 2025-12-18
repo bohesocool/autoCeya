@@ -29,13 +29,7 @@ const getStatus = (req, res) => {
  * 清除请求日志
  */
 const clearLogs = (req, res) => {
-  const state = stressTestService.getState();
-  state.stats.requestLogs = [];
-  
-  stressTestService.broadcast({
-    type: 'logsCleared',
-  });
-  
+  stressTestService.clearRequestLogs();
   res.json({ success: true, message: '日志已清除' });
 };
 
